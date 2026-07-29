@@ -14,7 +14,13 @@ import { Input } from '@/Components/ui/Input';
 import { PageHeader } from '@/Components/ui/PageHeader';
 import { Select } from '@/Components/ui/Select';
 import { usePermissions } from '@/Hooks/usePermissions';
-import { formatCompact, formatDateTime, formatNumber, formatRelative } from '@/lib/format';
+import {
+    formatCompact,
+    formatDate,
+    formatDateTime,
+    formatNumber,
+    formatRelative,
+} from '@/lib/format';
 
 interface BridgeRow {
     id: number;
@@ -297,7 +303,9 @@ export default function BridgeIndex({
                                 description={
                                     snapshot.analytics.since === null
                                         ? 'مقروء من موازين'
-                                        : `منذ ${snapshot.analytics.since}`
+                                        : // الطابع الزمني الخام يصل كما أرسله موازين؛ عرضه
+                                          // نصًّا يجعل تاريخًا يُقرأ رمزًا تقنيًّا.
+                                          `منذ ${formatDate(snapshot.analytics.since)}`
                                 }
                             />
                             <CardBody className="flex flex-wrap gap-x-8 gap-y-3">
