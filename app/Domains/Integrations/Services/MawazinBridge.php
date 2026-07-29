@@ -52,24 +52,24 @@ class MawazinBridge
             return BridgeResult::failure('الجسر غير مكتمل الإعداد.');
         }
 
-        $token = $this->token($bridge);
+        $auth = $this->token($bridge);
 
-        if ($token === null) {
-            return BridgeResult::failure('تعذّر تسجيل دخول حساب الخدمة.');
+        if ($auth['token'] === null) {
+            return BridgeResult::failure($auth['error']);
         }
 
-        $result = $this->call($bridge, $path, $query, $token);
+        $result = $this->call($bridge, $path, $query, $auth['token']);
 
         // ٤٠١ بعد رمز مقبول يعني انتهاءه لا خطأ البيانات: يُمسح ويُجدَّد مرة.
         if ($result->error === 'unauthorized') {
             Cache::forget($this->cacheKey($bridge));
             $fresh = $this->token($bridge);
 
-            if ($fresh === null) {
-                return BridgeResult::failure('انتهى رمز حساب الخدمة وتعذّر تجديده.');
+            if ($fresh['token'] === null) {
+                return BridgeResult::failure('انتهى رمز حساب الخدمة وتعذّر تجديده: '.$fresh['error']);
             }
 
-            $result = $this->call($bridge, $path, $query, $fresh);
+            $result = $this->call($bridge, $path, $query, $fresh['token']);
         }
 
         return $result->error === 'unauthorized'
@@ -110,48 +110,79 @@ class MawazinBridge
             : BridgeResult::failure('رد الخادم بجسم غير متوقع.', $elapsed);
     }
 
-    private function token(ProjectBridge $bridge): ?string
+    /**
+     * الرمز، أو سبب تعذّره.
+     *
+     * السبب يُحمل معه لا يُبتلع: «تعذّر تسجيل الدخول» وحدها تصف الخادمَ
+     * المطفأ وكلمةَ المرور الخاطئة وحقلَ الرمز المُعاد تسميته بنفس العبارة،
+     * فيبدأ المشغّل بتجربة الثلاثة عشوائيًّا.
+     *
+     * @return array{token: string|null, error: string}
+     */
+    private function token(ProjectBridge $bridge): array
     {
         if ($bridge->auth_mode === ProjectBridge::MODE_BEARER) {
-            return $bridge->secret('token');
+            $token = $bridge->secret('token');
+
+            return [
+                'token' => $token,
+                'error' => $token === null ? 'لا رمز محفوظ لهذا الجسر.' : '',
+            ];
         }
 
         $cached = Cache::get($this->cacheKey($bridge));
 
         if (is_string($cached) && $cached !== '') {
-            return $cached;
+            return ['token' => $cached, 'error' => ''];
         }
 
-        $token = $this->login($bridge);
+        $outcome = $this->login($bridge);
 
-        if ($token !== null) {
-            Cache::put($this->cacheKey($bridge), $token, self::TOKEN_TTL);
+        if ($outcome['token'] !== null) {
+            Cache::put($this->cacheKey($bridge), $outcome['token'], self::TOKEN_TTL);
         }
 
-        return $token;
+        return $outcome;
     }
 
-    private function login(ProjectBridge $bridge): ?string
+    /**
+     * @return array{token: string|null, error: string}
+     */
+    private function login(ProjectBridge $bridge): array
     {
+        $url = $this->url($bridge, '/auth/login');
+
         try {
             $response = Http::acceptJson()
                 ->timeout(self::TIMEOUT)
-                ->post($this->url($bridge, '/auth/login'), [
+                ->post($url, [
                     'email' => $bridge->secret('email'),
                     'password' => $bridge->secret('password'),
                 ]);
-        } catch (Throwable) {
-            return null;
+        } catch (ConnectionException) {
+            // العنوان يُذكر في النص: خطأ المنفذ أو نسيان `/api` أشيع من عطل
+            // الخادم، ولا يُرى إلا إذا قيل ما نُودي فعلًا.
+            return $this->failedLogin("تعذّر الوصول إلى {$url} — تأكد أن المشروع يعمل وأن العنوان صحيح.");
+        } catch (Throwable $exception) {
+            return $this->failedLogin('خطأ غير متوقع عند تسجيل الدخول: '.$exception->getMessage());
+        }
+
+        if ($response->status() === 401 || $response->status() === 403) {
+            return $this->failedLogin('رفض المشروع بيانات حساب الخدمة — راجع البريد وكلمة المرور.');
+        }
+
+        if ($response->status() === 404) {
+            return $this->failedLogin("لا مسار تسجيل دخول على {$url} — غالبًا ينقص العنوانَ بادئته (مثل /api).");
         }
 
         if ($response->failed()) {
-            return null;
+            return $this->failedLogin("ردّ المشروع بـ {$response->status()} على تسجيل الدخول.");
         }
 
         $body = $response->json();
 
         if (! is_array($body)) {
-            return null;
+            return $this->failedLogin('ردّ تسجيل الدخول بجسم غير متوقع.');
         }
 
         // موازين قد يسمّيه `accessToken` أو `access_token` أو `token`؛ نقبلها
@@ -160,11 +191,22 @@ class MawazinBridge
             $value = $body[$field] ?? null;
 
             if (is_string($value) && $value !== '') {
-                return $value;
+                return ['token' => $value, 'error' => ''];
             }
         }
 
-        return null;
+        // نجح الدخول وما وجدنا الرمز: عيبٌ في التسمية لا في البيانات، ويُقال
+        // كذلك حتى لا يُطارَد في كلمة المرور بلا طائل.
+        return $this->failedLogin(
+            'قُبل الدخول ولم يحمل الرد رمزًا بأي من الأسماء المعروفة ('
+            .implode(' · ', array_keys($body)).').',
+        );
+    }
+
+    /** @return array{token: null, error: string} */
+    private function failedLogin(string $reason): array
+    {
+        return ['token' => null, 'error' => $reason];
     }
 
     private function url(ProjectBridge $bridge, string $path): string

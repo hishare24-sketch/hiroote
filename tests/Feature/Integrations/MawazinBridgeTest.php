@@ -11,9 +11,11 @@ use App\Domains\Integrations\Services\MawazinBridge;
 use App\Domains\Projects\Models\Project;
 use Database\Factories\ProjectFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -235,6 +237,61 @@ class MawazinBridgeTest extends TestCase
             ->get('/bridge')
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('bridge', null));
+    }
+
+    /**
+     * إخفاق تسجيل الدخول يقول أيَّ الأسباب وقع.
+     *
+     * رُصد على أول ربط حيّ: أربع بطاقات تقول «تعذّر تسجيل دخول حساب الخدمة»
+     * وهي نفسها للخادم المطفأ ولكلمة المرور الخاطئة ولحقل الرمز المُعاد
+     * تسميته — فلا يبقى للمشغّل إلا التجريب العشوائي. الرسالة الواحدة لثلاثة
+     * أسباب ليست معلومة، وهذا ما يمنع عودتها.
+     */
+    /**
+     * حالةٌ لكل اختبار لا حلقةٌ داخل واحد: `Http::fake` يضيف ولا يستبدل، فأول
+     * مطابقٍ يفوز، وحلقةٌ تجيب فيها الحالةُ الأولى عن الأربع تمرّ كذبًا.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    #[Test]
+    #[DataProvider('loginFailures')]
+    public function each_login_failure_names_its_own_cause(
+        string $expected,
+        int $status,
+        array $body = [],
+    ): void {
+        Http::fake([self::BASE.'/auth/login' => Http::response($body, $status)]);
+
+        $result = app(MawazinBridge::class)->get($this->bridge(), '/ai/settings');
+
+        $this->assertFalse($result->ok);
+        $this->assertStringContainsString($expected, (string) $result->error);
+    }
+
+    /**
+     * @return array<string, array{string, int, 2?: array<string, mixed>}>
+     */
+    public static function loginFailures(): array
+    {
+        return [
+            'بيانات مرفوضة' => ['رفض المشروع بيانات حساب الخدمة', 401],
+            'مسار غير موجود' => ['لا مسار تسجيل دخول', 404],
+            'عطل في المشروع' => ['ردّ المشروع بـ 500', 500],
+            'رد بلا رمز' => ['ولم يحمل الرد رمزًا', 200, ['user' => ['id' => 1]]],
+        ];
+    }
+
+    #[Test]
+    public function an_unreachable_project_names_the_address_it_tried(): void
+    {
+        // العنوان في نصّ الخطأ: نسيان البادئة `/api` أو خطأ المنفذ أشيع من
+        // عطل الخادم، ولا يُرى إلا إذا قيل ما نُودي فعلًا.
+        Http::fake(fn () => throw new ConnectionException('connection refused'));
+
+        $result = app(MawazinBridge::class)->get($this->bridge(), '/ai/settings');
+
+        $this->assertFalse($result->ok);
+        $this->assertStringContainsString(self::BASE.'/auth/login', (string) $result->error);
     }
 
     private function bridge(): ProjectBridge
