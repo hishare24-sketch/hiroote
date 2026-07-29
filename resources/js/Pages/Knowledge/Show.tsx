@@ -11,6 +11,7 @@ import {
     Pencil,
     Plus,
     StickyNote,
+    Trash2,
     X,
 } from 'lucide-react';
 import type { StatusTone } from '@/types';
@@ -33,6 +34,7 @@ import { EmptyState } from '@/Components/ui/EmptyState';
 import { Input } from '@/Components/ui/Input';
 import { PageHeader } from '@/Components/ui/PageHeader';
 import { Select } from '@/Components/ui/Select';
+import { ScreenDialog } from './ScreenDialog';
 import { usePermissions } from '@/Hooks/usePermissions';
 import { formatNumber, formatPercent, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
@@ -70,6 +72,7 @@ export default function KnowledgeShow({
     const manage = can('knowledge.manage');
     const [editing, setEditing] = useState<KnowledgeItemRow | null>(null);
     const [creating, setCreating] = useState(false);
+    const [screenDialog, setScreenDialog] = useState<{ screen?: ScreenRow } | null>(null);
 
     const open = feedback.filter((entry) => !entry.resolved);
 
@@ -356,6 +359,19 @@ export default function KnowledgeShow({
                 <CardHeader
                     title="شاشات القسم"
                     description="ما يراه المستخدم، بعناصره وإجراءاته وحالاته"
+                    actions={
+                        manage ? (
+                            <Button
+                                size="sm"
+                                onClick={() => {
+                                    setScreenDialog({});
+                                }}
+                            >
+                                <Plus aria-hidden className="size-4" />
+                                شاشة
+                            </Button>
+                        ) : undefined
+                    }
                 />
                 <CardBody>
                     {screens.length === 0 ? (
@@ -371,23 +387,81 @@ export default function KnowledgeShow({
                                     key={screen.id}
                                     className="flex flex-col gap-3 rounded-card border border-border-default p-4"
                                 >
-                                    <div>
-                                        <p className="text-body font-bold text-fg-default">
-                                            {screen.name}
-                                        </p>
-                                        {screen.path === null ? null : (
-                                            <p
-                                                dir="ltr"
-                                                className="text-start text-micro text-fg-subtle"
-                                            >
-                                                {screen.path}
+                                    {screen.image_url === null ? null : (
+                                        <img
+                                            src={screen.image_url}
+                                            alt={`صورة شاشة ${screen.name}`}
+                                            loading="lazy"
+                                            className="max-h-56 w-full rounded-control border border-border-default object-contain"
+                                        />
+                                    )}
+
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <p className="text-body font-bold text-fg-default">
+                                                {screen.name}
                                             </p>
-                                        )}
-                                        {screen.description === null ? null : (
-                                            <p className="mt-1 text-caption text-fg-muted">
-                                                {screen.description}
-                                            </p>
-                                        )}
+                                            {screen.key === null ? (
+                                                <p className="text-caption text-warning">
+                                                    بلا مفتاح — لن يعرفها المشروع عند فتح الشات
+                                                </p>
+                                            ) : (
+                                                <p
+                                                    dir="ltr"
+                                                    className="text-start text-caption text-accent"
+                                                >
+                                                    {screen.key}
+                                                </p>
+                                            )}
+                                            {screen.path === null ? null : (
+                                                <p
+                                                    dir="ltr"
+                                                    className="text-start text-caption text-fg-subtle"
+                                                >
+                                                    {screen.path}
+                                                </p>
+                                            )}
+                                            {screen.description === null ? (
+                                                <p className="mt-1 text-caption text-warning">
+                                                    بلا وصف — المساعد يقرأ الوصف لا الصورة
+                                                </p>
+                                            ) : (
+                                                <p className="mt-1 text-caption text-fg-muted">
+                                                    {screen.description}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {manage ? (
+                                            <span className="flex shrink-0 items-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setScreenDialog({ screen });
+                                                    }}
+                                                >
+                                                    <Pencil aria-hidden className="size-3.5" />
+                                                    <span className="sr-only">تعديل</span>
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        router.delete(
+                                                            `/knowledge/screens/${String(screen.id)}`,
+                                                            { preserveScroll: true },
+                                                        );
+                                                    }}
+                                                >
+                                                    <Trash2
+                                                        aria-hidden
+                                                        className="size-3.5 text-danger"
+                                                    />
+                                                    <span className="sr-only">حذف</span>
+                                                </Button>
+                                            </span>
+                                        ) : null}
                                     </div>
 
                                     <ScreenFacet label="العناصر" values={screen.elements} />
@@ -421,6 +495,16 @@ export default function KnowledgeShow({
                     statusOptions={statusOptions}
                     onClose={() => {
                         setEditing(null);
+                    }}
+                />
+            )}
+
+            {screenDialog === null ? null : (
+                <ScreenDialog
+                    sectionId={section.id}
+                    screen={screenDialog.screen}
+                    onClose={() => {
+                        setScreenDialog(null);
                     }}
                 />
             )}

@@ -98,11 +98,12 @@ class KnowledgeSeeder extends Seeder
         ],
     ];
 
-    /** @var array<string, list<array{name: string, path: string, description: string, elements: list<string>, actions: list<string>, states: list<string>}>> */
+    /** @var array<string, list<array{name: string, key: string, path: string, description: string, elements: list<string>, actions: list<string>, states: list<string>}>> */
     private const SCREENS = [
         'المحفظة' => [
             [
                 'name' => 'المحفظة / سجل العمليات',
+                'key' => 'wallet.transactions',
                 'path' => '/wallet/transactions',
                 'description' => 'كل حركة دخلت الرصيد أو خرجت منه، مرتبة بالأحدث.',
                 'elements' => ['الرصيد الحالي', 'فلتر النوع', 'فلتر التاريخ', 'جدول الحركات'],
@@ -111,6 +112,7 @@ class KnowledgeSeeder extends Seeder
             ],
             [
                 'name' => 'المحفظة / طلب سحب',
+                'key' => 'wallet.withdraw',
                 'path' => '/wallet/withdraw',
                 'description' => 'إنشاء طلب سحب إلى الحساب البنكي الموثّق.',
                 'elements' => ['المبلغ', 'الحساب البنكي', 'ملخص الرسوم'],
@@ -121,6 +123,7 @@ class KnowledgeSeeder extends Seeder
         'الحملات' => [
             [
                 'name' => 'الحملات / تفاصيل الحملة',
+                'key' => 'campaigns.detail',
                 'path' => '/campaigns/{id}',
                 'description' => 'شروط الحملة ومكافآتها وحالة انضمام المستخدم.',
                 'elements' => ['وصف الحملة', 'الشروط', 'المكافأة', 'المدة المتبقية'],

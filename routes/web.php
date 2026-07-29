@@ -104,6 +104,14 @@ Route::middleware('auth')->group(function (): void {
             ->name('knowledge.versions.restore');
         Route::post('/knowledge/feedback/{feedback}', [KnowledgeController::class, 'resolveFeedback'])
             ->name('knowledge.feedback.resolve');
+
+        Route::post('/knowledge/sections/{section}/screens', [KnowledgeController::class, 'storeScreen'])
+            ->name('knowledge.screens.store');
+        // POST لا PUT: رفع الملفات يحتاج multipart، وهو ما لا يحمله PUT في المتصفح.
+        Route::post('/knowledge/screens/{screen}', [KnowledgeController::class, 'updateScreen'])
+            ->name('knowledge.screens.update');
+        Route::delete('/knowledge/screens/{screen}', [KnowledgeController::class, 'destroyScreen'])
+            ->name('knowledge.screens.destroy');
     });
 
     Route::middleware('permission:alerts.view')->group(function (): void {

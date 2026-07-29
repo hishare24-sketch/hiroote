@@ -85,6 +85,8 @@ class KnowledgeScreenTest extends TestCase
             'project_id' => $this->project->id,
             'section_id' => $this->section->id,
             'name' => 'المحفظة / السجل',
+            // الوصف شرط الاحتساب: المساعد يقرأه، والصورة وحدها لا تصله.
+            'description' => 'سجل حركات المحفظة مرتبة زمنيًا.',
         ]);
 
         KnowledgeSource::query()->create([
@@ -112,6 +114,7 @@ class KnowledgeScreenTest extends TestCase
             'project_id' => $this->project->id,
             'section_id' => $this->section->id,
             'name' => 'شاشة',
+            'description' => 'وصف الشاشة.',
         ]);
         KnowledgeSource::query()->create([
             'project_id' => $this->project->id,

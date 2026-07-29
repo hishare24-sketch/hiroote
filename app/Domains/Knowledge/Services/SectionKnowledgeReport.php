@@ -45,7 +45,11 @@ final readonly class SectionKnowledgeReport
             ->selectRaw('count(*) filter (where status = ?) as published', [KnowledgeStatus::Published->value])
             ->groupBy('section_id')->toBase()->get()->keyBy('section_id');
 
+        // الموصوفة وحدها تُحتسب: المساعد يقرأ الوصف لا الصورة، وشاشةٌ بصورة
+        // وبلا وصف تجعل المعيار يعلن تغطيةً لا وجود لها.
         $screens = KnowledgeScreen::query()->forProject($project)
+            ->whereNotNull('description')
+            ->where('description', '!=', '')
             ->selectRaw('section_id, count(*) as total')
             ->groupBy('section_id')->toBase()->pluck('total', 'section_id');
 

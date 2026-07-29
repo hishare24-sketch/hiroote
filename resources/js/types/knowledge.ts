@@ -58,9 +58,11 @@ export interface KnowledgeItemRow {
 export interface ScreenRow {
     id: number;
     name: string;
+    /** المفتاح الثابت الذي يرسله المشروع الخارجي عند فتح الشات من هذه الشاشة. */
+    key: string | null;
     path: string | null;
     description: string | null;
-    image_path: string | null;
+    image_url: string | null;
     elements: string[];
     actions: string[];
     states: string[];

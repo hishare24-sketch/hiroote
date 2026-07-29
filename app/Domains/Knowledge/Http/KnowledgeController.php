@@ -8,6 +8,7 @@ use App\Domains\Assistants\Models\ProjectSection;
 use App\Domains\Knowledge\Actions\ResolveKnowledgeFeedback;
 use App\Domains\Knowledge\Actions\RestoreKnowledgeVersion;
 use App\Domains\Knowledge\Actions\SaveKnowledgeItem;
+use App\Domains\Knowledge\Actions\SaveKnowledgeScreen;
 use App\Domains\Knowledge\Enums\FeedbackKind;
 use App\Domains\Knowledge\Enums\KnowledgeKind;
 use App\Domains\Knowledge\Enums\KnowledgeStatus;
@@ -17,12 +18,16 @@ use App\Domains\Knowledge\Models\KnowledgeScreen;
 use App\Domains\Knowledge\Models\KnowledgeSource;
 use App\Domains\Knowledge\Models\KnowledgeVersion;
 use App\Domains\Knowledge\Services\SectionKnowledgeReport;
+use App\Domains\Projects\Models\Project;
 use App\Domains\Projects\Services\CurrentProject;
 use App\Http\Controllers\Controller;
 use App\Support\Enums\EnumPayload;
 use App\Support\Http\SystemStatus;
+use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -107,9 +112,10 @@ class KnowledgeController extends Controller
                 ->map(fn (KnowledgeScreen $screen): array => [
                     'id' => $screen->id,
                     'name' => $screen->name,
+                    'key' => $screen->key,
                     'path' => $screen->path,
                     'description' => $screen->description,
-                    'image_path' => $screen->image_path,
+                    'image_url' => $screen->imageUrl(),
                     'elements' => $screen->elements ?? [],
                     'actions' => $screen->actions ?? [],
                     'states' => $screen->states ?? [],
@@ -258,6 +264,93 @@ class KnowledgeController extends Controller
         $action->handle($feedback, $request->boolean('resolved'));
 
         return back();
+    }
+
+    public function storeScreen(Request $request, ProjectSection $section, SaveKnowledgeScreen $action): RedirectResponse
+    {
+        $project = $this->current->require();
+        abort_unless($section->project_id === $project->id, 404);
+
+        $validated = $this->validateScreen($request, $project);
+
+        $action->handle(
+            project: $project,
+            section: $section,
+            attributes: $validated,
+            image: $request->file('image') instanceof UploadedFile ? $request->file('image') : null,
+        );
+
+        return back()->with('success', 'أُضيفت الشاشة.');
+    }
+
+    public function updateScreen(Request $request, KnowledgeScreen $screen, SaveKnowledgeScreen $action): RedirectResponse
+    {
+        $project = $this->current->require();
+        abort_unless($screen->project_id === $project->id, 404);
+
+        $section = ProjectSection::query()->findOrFail($screen->section_id);
+        $validated = $this->validateScreen($request, $project, $screen);
+
+        $action->handle(
+            project: $project,
+            section: $section,
+            attributes: $validated,
+            screen: $screen,
+            image: $request->file('image') instanceof UploadedFile ? $request->file('image') : null,
+            removeImage: $request->boolean('remove_image'),
+        );
+
+        return back()->with('success', 'حُفظت الشاشة.');
+    }
+
+    public function destroyScreen(KnowledgeScreen $screen, SaveKnowledgeScreen $action): RedirectResponse
+    {
+        abort_unless($screen->project_id === $this->current->require()->id, 404);
+
+        $action->delete($screen);
+
+        return back()->with('success', 'حُذفت الشاشة.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validateScreen(Request $request, Project $project, ?KnowledgeScreen $screen = null): array
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            // المفتاح لاتيني بنقاط: هو ما يرسله المشروع الخارجي، وحرفٌ عربي أو
+            // مسافة فيه يجعل المطابقة تعتمد على ترميز الرابط.
+            'key' => [
+                'nullable', 'string', 'max:120', 'regex:/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/',
+                Rule::unique('knowledge_screens', 'key')
+                    ->where(fn (Builder $query) => $query->where('project_id', $project->id))
+                    ->ignore($screen?->id),
+            ],
+            'path' => ['nullable', 'string', 'max:200'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'elements' => ['array', 'max:30'],
+            'elements.*' => ['string', 'max:120'],
+            'actions' => ['array', 'max:30'],
+            'actions.*' => ['string', 'max:120'],
+            'states' => ['array', 'max:30'],
+            'states.*' => ['string', 'max:120'],
+            'image' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:4096'],
+        ], [
+            'key.regex' => 'المفتاح حروف لاتينية صغيرة وأرقام تفصلها نقطة، مثل wallet.withdraw.',
+            'key.unique' => 'هذا المفتاح مستخدم في شاشة أخرى من المشروع نفسه.',
+            'image.max' => 'حجم الصورة يتجاوز ٤ ميغابايت.',
+        ]);
+
+        return [
+            'name' => $validated['name'],
+            'key' => $validated['key'] ?? null,
+            'path' => $validated['path'] ?? null,
+            'description' => $validated['description'] ?? null,
+            'elements' => array_values($validated['elements'] ?? []),
+            'actions' => array_values($validated['actions'] ?? []),
+            'states' => array_values($validated['states'] ?? []),
+        ];
     }
 
     /**
