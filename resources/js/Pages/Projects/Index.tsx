@@ -1,8 +1,19 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import { LayoutGrid, Plus, Settings2, Shield, UserMinus, UserPlus, X } from 'lucide-react';
+import {
+    KeyRound,
+    LayoutGrid,
+    Plus,
+    Settings2,
+    Shield,
+    UserMinus,
+    UserPlus,
+    X,
+} from 'lucide-react';
 import type { StatusTone } from '@/types';
 import type { SelectOptionPayload } from '@/types/assistants';
+import type { ApiKeyRow } from './ApiKeysDialog';
+import { ApiKeysDialog } from './ApiKeysDialog';
 import { AdminLayout } from '@/Layouts/AdminLayout';
 import { Alert } from '@/Components/ui/Alert';
 import { Badge } from '@/Components/ui/Badge';
@@ -35,6 +46,7 @@ interface ProjectRow {
     cost: number;
     sections: number;
     members: Member[];
+    api_keys: ApiKeyRow[];
 }
 
 interface Props {
@@ -58,6 +70,7 @@ export default function ProjectsIndex({
     const [creating, setCreating] = useState(false);
     const [settingsFor, setSettingsFor] = useState<ProjectRow | null>(null);
     const [membersFor, setMembersFor] = useState<ProjectRow | null>(null);
+    const [keysFor, setKeysFor] = useState<ProjectRow | null>(null);
 
     return (
         <AdminLayout>
@@ -183,6 +196,16 @@ export default function ProjectsIndex({
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => {
+                                            setKeysFor(project);
+                                        }}
+                                    >
+                                        <KeyRound aria-hidden className="size-3.5" />
+                                        المفاتيح
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
                                             setSettingsFor(project);
                                         }}
                                     >
@@ -203,6 +226,16 @@ export default function ProjectsIndex({
                     }}
                 />
             ) : null}
+
+            {keysFor === null ? null : (
+                <ApiKeysDialog
+                    project={keysFor}
+                    keys={projects.find((row) => row.id === keysFor.id)?.api_keys ?? []}
+                    onClose={() => {
+                        setKeysFor(null);
+                    }}
+                />
+            )}
 
             {settingsFor === null ? null : (
                 <SettingsDialog

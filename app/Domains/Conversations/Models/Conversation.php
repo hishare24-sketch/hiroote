@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $external_user_id
  * @property int|null $model_id
  * @property string $section
+ * @property string|null $screen_key
  * @property string|null $assistant
  * @property AssistantLevel $level
  * @property int|null $confidence

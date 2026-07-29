@@ -43,6 +43,10 @@ Route::middleware('auth')->group(function (): void {
             ->name('projects.members.add');
         Route::delete('/projects/{project}/members/{user}', [ProjectsController::class, 'removeMember'])
             ->name('projects.members.remove');
+        Route::post('/projects/{project}/keys', [ProjectsController::class, 'issueKey'])
+            ->name('projects.keys.issue');
+        Route::delete('/projects/{project}/keys/{key}', [ProjectsController::class, 'revokeKey'])
+            ->name('projects.keys.revoke');
     });
 
     Route::get('/', OverviewController::class)

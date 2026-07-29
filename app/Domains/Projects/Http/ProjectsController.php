@@ -10,6 +10,8 @@ use App\Domains\Administration\Models\User;
 use App\Domains\Analytics\Models\CostUsageRecord;
 use App\Domains\Assistants\Models\ProjectSection;
 use App\Domains\Conversations\Models\Conversation;
+use App\Domains\Integrations\Actions\IssueProjectApiKey;
+use App\Domains\Integrations\Models\ProjectApiKey;
 use App\Domains\Projects\Actions\RemoveProjectMember;
 use App\Domains\Projects\Actions\SaveProject;
 use App\Domains\Projects\Actions\SaveProjectMembership;
@@ -19,6 +21,7 @@ use App\Http\Controllers\Controller;
 use App\Support\Http\SystemStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -48,7 +51,7 @@ class ProjectsController extends Controller
                 'members',
                 fn ($members) => $members->where('users.id', $user->id),
             ))
-            ->with('members')
+            ->with(['members', 'apiKeys' => fn ($keys) => $keys->latest('id')])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
@@ -88,6 +91,18 @@ class ProjectsController extends Controller
                 'conversations' => (int) ($conversations[$project->id] ?? 0),
                 'cost' => round((float) ($costs[$project->id] ?? 0), 2),
                 'sections' => (int) ($sections[$project->id] ?? 0),
+                'api_keys' => $project->apiKeys
+                    ->map(fn (ProjectApiKey $key): array => [
+                        'id' => $key->id,
+                        'name' => $key->name,
+                        'prefix' => $key->prefix,
+                        'status' => $key->statusLabel(),
+                        'usable' => $key->isUsable(),
+                        'last_used_at' => $key->last_used_at?->toIso8601String(),
+                        'expires_at' => $key->expires_at?->toIso8601String(),
+                    ])
+                    ->values()
+                    ->all(),
                 'members' => $project->members
                     ->map(fn (User $member): array => [
                         'id' => $member->id,
@@ -113,6 +128,36 @@ class ProjectsController extends Controller
                 ])
                 ->all(),
         ]);
+    }
+
+    public function issueKey(Request $request, Project $project, IssueProjectApiKey $action): RedirectResponse
+    {
+        $this->authorizeManage($request, $project);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'expires_at' => ['nullable', 'date', 'after:today'],
+        ]);
+
+        $issued = $action->issue(
+            $project,
+            $validated['name'],
+            isset($validated['expires_at']) ? Carbon::parse($validated['expires_at']) : null,
+        );
+
+        // المفتاح في الجلسة مرة واحدة: لا يُحفظ في جدول ولا يُسترجع، وعرضه
+        // ثانيةً في أي شاشة يعني أنه قابل للسرقة منها.
+        return back()->with('issued_api_key', $issued['token']);
+    }
+
+    public function revokeKey(Request $request, Project $project, ProjectApiKey $key, IssueProjectApiKey $action): RedirectResponse
+    {
+        $this->authorizeManage($request, $project);
+        abort_unless($key->project_id === $project->id, 404);
+
+        $action->revoke($key);
+
+        return back()->with('success', 'أُبطل المفتاح.');
     }
 
     public function store(Request $request, SaveProject $action): RedirectResponse

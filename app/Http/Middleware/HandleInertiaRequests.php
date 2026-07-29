@@ -62,7 +62,11 @@ final class HandleInertiaRequests extends Middleware
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
+                'warning' => fn () => $request->session()->get('warning'),
                 'error' => fn () => $request->session()->get('error'),
+                // المفتاح المُصدَر يعبر مرة واحدة عبر الجلسة ولا يُحفظ في أي
+                // مكان آخر: ما لا يُخزَّن لا يُسرَق.
+                'issued_api_key' => fn () => $request->session()->get('issued_api_key'),
             ],
             'requestId' => fn (): string => RequestId::current(),
         ];

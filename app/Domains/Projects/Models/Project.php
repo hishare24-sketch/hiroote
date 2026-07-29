@@ -6,12 +6,14 @@ namespace App\Domains\Projects\Models;
 
 use App\Domains\Administration\Enums\Role;
 use App\Domains\Administration\Models\User;
+use App\Domains\Integrations\Models\ProjectApiKey;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -49,6 +51,12 @@ class Project extends Model
     protected function casts(): array
     {
         return ['is_active' => 'boolean'];
+    }
+
+    /** @return HasMany<ProjectApiKey, $this> */
+    public function apiKeys(): HasMany
+    {
+        return $this->hasMany(ProjectApiKey::class);
     }
 
     /** @return BelongsToMany<User, $this> */
