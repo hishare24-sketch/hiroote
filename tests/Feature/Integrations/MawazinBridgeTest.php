@@ -10,6 +10,7 @@ use App\Domains\Integrations\Models\ProjectBridge;
 use App\Domains\Integrations\Services\MawazinBridge;
 use App\Domains\Projects\Models\Project;
 use Database\Factories\ProjectFactory;
+use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
@@ -285,6 +286,40 @@ class MawazinBridgeTest extends TestCase
     }
 
     #[Test]
+    public function the_unified_envelope_is_unwrapped_before_anything_reads_it(): void
+    {
+        // رُصد حيًّا: `TransformInterceptor` عامّ في موازين يغلّف كل رد JSON،
+        // فالرمز داخل `data` وكذلك حمولات النقاط الأربع. بُني المهايئ على
+        // أنواع ما تُعيده المتحكّمات لا على ما يخرج من HTTP.
+        Http::fake([
+            self::BASE.'/auth/login' => Http::response(['success' => true, 'data' => ['token' => 't']]),
+            self::BASE.'/ai/settings' => Http::response(['success' => true, 'data' => ['provider' => 'claude']]),
+        ]);
+
+        $result = app(MawazinBridge::class)->get($this->bridge(), '/ai/settings');
+
+        $this->assertTrue($result->ok);
+        $this->assertSame('claude', $result->data['provider'] ?? null);
+        $this->assertArrayNotHasKey('success', $result->data);
+    }
+
+    #[Test]
+    public function a_payload_that_merely_carries_a_data_key_is_left_whole(): void
+    {
+        // الفكّ يشترط `success` معه: حمولةٌ حقلُها اسمه `data` مصادفةً تُسلَّم
+        // كما هي، وإلا ابتلع الفكُّ بقيةَ حقولها بلا أن يشكو أحد.
+        Http::fake([
+            self::BASE.'/auth/login' => Http::response(['token' => 't']),
+            self::BASE.'/ai/settings' => Http::response(['data' => ['x' => 1], 'since' => '2026-06-29']),
+        ]);
+
+        $result = app(MawazinBridge::class)->get($this->bridge(), '/ai/settings');
+
+        $this->assertTrue($result->ok);
+        $this->assertSame('2026-06-29', $result->data['since'] ?? null);
+    }
+
+    #[Test]
     public function a_rejected_login_is_attempted_once_for_the_whole_snapshot(): void
     {
         // رُصد حيًّا: أربع نقاط تعني أربع محاولات دخول حين يُرفض الدخول، وموازين
@@ -322,11 +357,16 @@ class MawazinBridgeTest extends TestCase
         ]);
     }
 
+    /**
+     * موازين الحقيقي كما رُصد حيًّا: كل رد JSON مغلَّف بـ {success, data} عبر
+     * `TransformInterceptor` عامّ. والمُقلَّد الذي لا يغلّف يجعل الاختبار يمرّ
+     * على عقدٍ لا وجود له.
+     */
     private function fakeMawazin(): void
     {
         Http::fake([
-            self::BASE.'/auth/login' => Http::response(['accessToken' => 'token']),
-            self::BASE.'/ai/settings' => Http::response([
+            self::BASE.'/auth/login' => $this->wrapped(['token' => 'token']),
+            self::BASE.'/ai/settings' => $this->wrapped([
                 'provider' => 'claude',
                 'model' => 'claude-sonnet',
                 'assistantProvider' => '',
@@ -346,7 +386,7 @@ class MawazinBridgeTest extends TestCase
                     'diamond' => ['maxTokensPerRequest' => 4096, 'dailyTokens' => 0, 'weeklyTokens' => 0, 'monthlyTokens' => 0],
                 ],
             ]),
-            self::BASE.'/ai/usage-analytics*' => Http::response([
+            self::BASE.'/ai/usage-analytics*' => $this->wrapped([
                 'since' => '2026-06-29',
                 'totalCostUsd' => 42.5,
                 'byKind' => [['kind' => 'assistant', 'count' => 120, 'tokens' => 900000, 'points' => 30]],
@@ -358,8 +398,16 @@ class MawazinBridgeTest extends TestCase
                 'topUsers' => [['userId' => 'u1', 'tokens' => 500000, 'events' => 60, 'points' => 20]],
                 'cache' => ['readTokens' => 10, 'creationTokens' => 5, 'hitRate' => 0.42],
             ]),
-            self::BASE.'/ai/health' => Http::response(['status' => 'ok']),
-            self::BASE.'/ai/user-quotas' => Http::response([]),
+            self::BASE.'/ai/health' => $this->wrapped(['status' => 'ok']),
+            self::BASE.'/ai/user-quotas' => $this->wrapped([]),
         ]);
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $payload
+     */
+    private function wrapped(array $payload): PromiseInterface
+    {
+        return Http::response(['success' => true, 'data' => $payload]);
     }
 }

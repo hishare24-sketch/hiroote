@@ -118,7 +118,7 @@ class MawazinBridge
         $data = $response->json();
 
         return is_array($data)
-            ? BridgeResult::success($data, $elapsed)
+            ? BridgeResult::success($this->unwrap($data), $elapsed)
             : BridgeResult::failure('رد الخادم بجسم غير متوقع.', $elapsed);
     }
 
@@ -218,10 +218,12 @@ class MawazinBridge
             return $this->failedLogin('ردّ تسجيل الدخول بجسم غير متوقع.');
         }
 
+        $payload = $this->unwrap($body);
+
         // موازين قد يسمّيه `accessToken` أو `access_token` أو `token`؛ نقبلها
         // كلها بدل أن نكسر عند إعادة تسمية لا تغيّر المعنى.
         foreach (['accessToken', 'access_token', 'token'] as $field) {
-            $value = $body[$field] ?? null;
+            $value = $payload[$field] ?? null;
 
             if (is_string($value) && $value !== '') {
                 return ['token' => $value, 'error' => ''];
@@ -234,6 +236,27 @@ class MawazinBridge
             'قُبل الدخول ولم يحمل الرد رمزًا بأي من الأسماء المعروفة ('
             .implode(' · ', array_keys($body)).').',
         );
+    }
+
+    /**
+     * يفكّ مظروف موازين الموحَّد `{success, data}`.
+     *
+     * `TransformInterceptor` مسجَّل عامًّا في `main.ts`، فيغلّف **كل** رد JSON.
+     * والفكّ هنا لا في كل قارئ: بُني هذا المهايئ على أنواع ما تُعيده
+     * المتحكّمات لا على ما يخرج من HTTP، فكانت النقاط الأربع تصل كلها
+     * مغلَّفة — ولا يكشف فرقًا كهذا إلا ربطٌ حيّ.
+     *
+     * والشرط ضيّق عمدًا: حمولةٌ تحمل مصادفةً حقلًا اسمه `data` لا تُفكّ ما لم
+     * تُعلن `success` معه.
+     *
+     * @param  array<array-key, mixed>  $body
+     * @return array<array-key, mixed>
+     */
+    private function unwrap(array $body): array
+    {
+        $data = $body['data'] ?? null;
+
+        return ($body['success'] ?? null) === true && is_array($data) ? $data : $body;
     }
 
     /**
