@@ -28,6 +28,8 @@ interface NavItem {
     href: string;
     icon: LucideIcon;
     permission: Permission;
+    /** Screens whose real implementation lands in a later phase (وثيقة 01 §9). */
+    planned?: boolean;
 }
 
 /** هيكل التنقل الرئيسي — وثيقة التصميم §3. */
@@ -38,31 +40,53 @@ const NAV_ITEMS: NavItem[] = [
         href: '/conversations',
         icon: MessagesSquare,
         permission: 'conversations.view',
+        planned: true,
     },
-    { label: 'الاستهلاك والتكلفة', href: '/usage', icon: Coins, permission: 'usage.view' },
+    {
+        label: 'الاستهلاك والتكلفة',
+        href: '/usage',
+        icon: Coins,
+        permission: 'usage.view',
+        planned: true,
+    },
     { label: 'المزودون والنماذج', href: '/providers', icon: Server, permission: 'providers.view' },
     {
         label: 'التحويل والتصعيد',
         href: '/escalations',
         icon: ArrowLeftRight,
         permission: 'escalations.view',
+        planned: true,
     },
     {
         label: 'إعدادات وسلوك المساعد',
         href: '/assistants',
         icon: Bot,
         permission: 'assistants.view',
+        planned: true,
     },
     {
         label: 'تكامل أقسام المنصة',
         href: '/integrations',
         icon: Plug,
         permission: 'integrations.view',
+        planned: true,
     },
-    { label: 'قاعدة المعرفة', href: '/knowledge', icon: BookOpen, permission: 'knowledge.view' },
+    {
+        label: 'قاعدة المعرفة',
+        href: '/knowledge',
+        icon: BookOpen,
+        permission: 'knowledge.view',
+        planned: true,
+    },
     { label: 'سجل التشغيل والتدقيق', href: '/audit', icon: ScrollText, permission: 'audit.view' },
-    { label: 'التنبيهات', href: '/alerts', icon: Bell, permission: 'alerts.view' },
-    { label: 'المستخدمون والصلاحيات', href: '/users', icon: Users, permission: 'users.view' },
+    { label: 'التنبيهات', href: '/alerts', icon: Bell, permission: 'alerts.view', planned: true },
+    {
+        label: 'المستخدمون والصلاحيات',
+        href: '/users',
+        icon: Users,
+        permission: 'users.view',
+        planned: true,
+    },
 ];
 
 export interface AdminLayoutProps {
@@ -106,7 +130,12 @@ export function AdminLayout({ title, children, headerActions }: AdminLayoutProps
                                 )}
                             >
                                 <item.icon aria-hidden className="size-4 shrink-0" />
-                                {item.label}
+                                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                                {item.planned === true ? (
+                                    <span className="shrink-0 rounded-full bg-surface-sunken px-1.5 py-0.5 text-[10px] font-medium text-fg-subtle">
+                                        قريبًا
+                                    </span>
+                                ) : null}
                             </Link>
                         );
                     })}
