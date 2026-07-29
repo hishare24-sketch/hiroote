@@ -8,6 +8,7 @@ use App\Domains\Assistants\Http\AssistantsController;
 use App\Domains\Assistants\Http\SectionsController;
 use App\Domains\Conversations\Http\ConversationsController;
 use App\Domains\Conversations\Http\EscalationsController;
+use App\Domains\Integrations\Http\BridgeController;
 use App\Domains\Knowledge\Http\KnowledgeController;
 use App\Domains\Projects\Http\ProjectsController;
 use App\Domains\Projects\Http\SwitchProjectController;
@@ -79,6 +80,14 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/assistants/functions', [AssistantsController::class, 'toggleFunction'])
             ->name('assistants.functions.toggle');
     });
+
+    Route::get('/bridge', [BridgeController::class, 'index'])
+        ->middleware('permission:integrations.view')
+        ->name('bridge.index');
+
+    Route::post('/bridge', [BridgeController::class, 'save'])
+        ->middleware('permission:integrations.manage')
+        ->name('bridge.save');
 
     Route::get('/integrations', [SectionsController::class, 'index'])
         ->middleware('permission:integrations.view')
