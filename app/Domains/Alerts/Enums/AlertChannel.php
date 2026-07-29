@@ -33,17 +33,38 @@ enum AlertChannel: string implements PresentableEnum
         return $this->isWired() ? 'success' : 'neutral';
     }
 
+    /**
+     * هل تصل هذه القناة **في هذه البيئة**؟
+     *
+     * كانت مثبَّتة في الكود، فتفعيل البريد يتطلب تعديل كود لا إعدادًا: مالكٌ
+     * يضبط SMTP صحيحًا يبقى تنبيهُه «معلّقًا» ولا يعرف السبب. صارت تُقرأ من
+     * الإعداد، فتتبع اللوحةُ الواقعَ بلا نشرة جديدة.
+     */
     public function isWired(): bool
     {
-        return $this === self::InApp;
+        return match ($this) {
+            self::InApp => true,
+            // `log` و`array` تبتلعان الرسالة: الأولى تكتبها في ملفّ والثانية
+            // في الذاكرة، وكلتاهما «أُرسل» في الكود و«لم يصل» عند المستلم.
+            self::Email => ! in_array(
+                (string) config('mail.default'),
+                ['log', 'array', 'null', ''],
+                strict: true,
+            ),
+            self::Webhook => false,
+        };
     }
 
     public function pendingReason(): ?string
     {
+        if ($this->isWired()) {
+            return null;
+        }
+
         return match ($this) {
             self::InApp => null,
-            self::Email => 'ينتظر ضبط مُرسِل البريد.',
-            self::Webhook => 'ينتظر عنوان استقبال في إعدادات المشروع.',
+            self::Email => 'ينتظر ضبط مُرسِل بريد حقيقي — المُرسِل الحالي يبتلع الرسالة.',
+            self::Webhook => 'لم يُبنَ بعد: يحتاج عنوان استقبال وسرَّ توقيع.',
         };
     }
 }
