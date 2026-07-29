@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Calculator, Link2, Plug, RefreshCw, Settings2 } from 'lucide-react';
 import type { StatusTone, Tone } from '@/types';
 import type { ConnectionMethod } from './MethodCards';
@@ -122,6 +122,27 @@ export default function BridgeIndex({
     const { can } = usePermissions();
     const manage = can('integrations.manage');
     const [editing, setEditing] = useState(bridge === null);
+    const formRef = useRef<HTMLDivElement>(null);
+
+    /**
+     * النموذج يقع تحت بطاقات طرق الربط، أي خارج الشاشة عند الفتح.
+     *
+     * زرٌّ يبدّل حالة شيء لا يراه الضاغط يقرأ عطلًا: مشروعٌ بلا جسر يفتح
+     * نموذجه تلقائيًّا، فأول ضغطة كانت **تخفيه** بلا أثر ظاهر. فصار الاسم
+     * يعلن الحالة، والفتح ينقل إليه.
+     */
+    const toggleForm = (): void => {
+        if (editing) {
+            setEditing(false);
+
+            return;
+        }
+
+        setEditing(true);
+        requestAnimationFrame(() => {
+            formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    };
 
     return (
         <AdminLayout>
@@ -143,14 +164,9 @@ export default function BridgeIndex({
                             أعد الجلب
                         </Button>
                         {manage ? (
-                            <Button
-                                variant="ghost"
-                                onClick={() => {
-                                    setEditing((value) => !value);
-                                }}
-                            >
+                            <Button variant="ghost" onClick={toggleForm}>
                                 <Settings2 aria-hidden className="size-4" />
-                                إعداد الاتصال
+                                {editing ? 'إخفاء إعداد الاتصال' : 'إعداد الاتصال'}
                             </Button>
                         ) : null}
                     </span>
@@ -161,8 +177,6 @@ export default function BridgeIndex({
                 هذه الشاشة تعرض ما في {project.name} ولا تغيّره. أي تعديل يبقى في لوحة المشروع نفسه
                 — والكتابة من هنا قرارٌ مؤجَّل لم يُبنَ له مسار.
             </Alert>
-
-            <MethodCards methods={methods} />
 
             {bridge === null ? null : (
                 <Card>
@@ -193,7 +207,18 @@ export default function BridgeIndex({
                 </Card>
             )}
 
-            {!editing || !manage ? null : <BridgeForm bridge={bridge} project={project} />}
+            {!editing || !manage ? null : (
+                <div ref={formRef} className="scroll-mt-4">
+                    <BridgeForm bridge={bridge} project={project} />
+                </div>
+            )}
+
+            {/*
+             * الشرح بعد العمل لا قبله: بطاقات الطرق مرجعٌ يُقرأ مرة، وحالةُ
+             * الاتصال ونموذجه هما ما يُفتح لأجله. تصديرُ خمس بطاقات فوقهما كان
+             * يدفع النموذج خارج الشاشة فيبدو غائبًا.
+             */}
+            <MethodCards methods={methods} />
 
             {snapshot === null ? (
                 <EmptyState
