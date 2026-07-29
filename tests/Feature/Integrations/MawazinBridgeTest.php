@@ -276,9 +276,23 @@ class MawazinBridgeTest extends TestCase
         return [
             'بيانات مرفوضة' => ['رفض المشروع بيانات حساب الخدمة', 401],
             'مسار غير موجود' => ['لا مسار تسجيل دخول', 404],
+            'تجاوز الحد' => ['تجاوز المشروع حدَّ محاولات الدخول', 429],
             'عطل في المشروع' => ['ردّ المشروع بـ 500', 500],
             'رد بلا رمز' => ['ولم يحمل الرد رمزًا', 200, ['user' => ['id' => 1]]],
         ];
+    }
+
+    #[Test]
+    public function a_rejected_login_is_attempted_once_for_the_whole_snapshot(): void
+    {
+        // رُصد حيًّا: أربع نقاط تعني أربع محاولات دخول حين يُرفض الدخول، وموازين
+        // يخنق عند ٣٠ في الدقيقة — فبضع فتحاتٍ للشاشة تستنفد الحدّ، ثم يقرأ
+        // المشغّل ٤٢٩ فيظنّ العطل في بياناته لا في عدد محاولاتنا.
+        Http::fake([self::BASE.'/auth/login' => Http::response([], 401)]);
+
+        app(MawazinBridge::class)->snapshot($this->bridge());
+
+        Http::assertSentCount(1);
     }
 
     #[Test]

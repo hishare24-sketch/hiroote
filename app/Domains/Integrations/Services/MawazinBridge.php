@@ -31,6 +31,18 @@ class MawazinBridge
     private const TOKEN_TTL = 1500;
 
     /**
+     * نتيجة تسجيل الدخول لهذا الطلب — نجاحًا كانت أو إخفاقًا.
+     *
+     * الإخفاق يُحفظ كما يُحفظ النجاح: بدونه تعيد كل نقطة المحاولةَ من جديد،
+     * فتصير فتحةُ شاشة واحدة أربعَ محاولات دخول. وموازين يخنق تسجيل الدخول
+     * عند ثلاثين محاولة في الدقيقة، فبضع محاولاتٍ من المشغّل تكفي لاستنفاده
+     * ثم يقرأ ٤٢٩ فيظنّ العطل في بياناته.
+     *
+     * @var array<int, array{token: string|null, error: string}>
+     */
+    private array $logins = [];
+
+    /**
      * كل ما تعرضه الشاشة، وكل نداء مستقل عن جاره.
      *
      * @return array<string, BridgeResult>
@@ -62,7 +74,7 @@ class MawazinBridge
 
         // ٤٠١ بعد رمز مقبول يعني انتهاءه لا خطأ البيانات: يُمسح ويُجدَّد مرة.
         if ($result->error === 'unauthorized') {
-            Cache::forget($this->cacheKey($bridge));
+            $this->forgetToken($bridge);
             $fresh = $this->token($bridge);
 
             if ($fresh['token'] === null) {
@@ -136,13 +148,25 @@ class MawazinBridge
             return ['token' => $cached, 'error' => ''];
         }
 
+        if (array_key_exists($bridge->id, $this->logins)) {
+            return $this->logins[$bridge->id];
+        }
+
         $outcome = $this->login($bridge);
+        $this->logins[$bridge->id] = $outcome;
 
         if ($outcome['token'] !== null) {
             Cache::put($this->cacheKey($bridge), $outcome['token'], self::TOKEN_TTL);
         }
 
         return $outcome;
+    }
+
+    /** يُنسي الرمز المحفوظ ونتيجةَ الدخول معًا، فيُسمح بمحاولة واحدة جديدة. */
+    private function forgetToken(ProjectBridge $bridge): void
+    {
+        Cache::forget($this->cacheKey($bridge));
+        unset($this->logins[$bridge->id]);
     }
 
     /**
@@ -169,6 +193,10 @@ class MawazinBridge
 
         if ($response->status() === 401 || $response->status() === 403) {
             return $this->failedLogin('رفض المشروع بيانات حساب الخدمة — راجع البريد وكلمة المرور.');
+        }
+
+        if ($response->status() === 429) {
+            return $this->failedLogin('تجاوز المشروع حدَّ محاولات الدخول — انتظر دقيقة ثم أعد الجلب.');
         }
 
         if ($response->status() === 404) {
