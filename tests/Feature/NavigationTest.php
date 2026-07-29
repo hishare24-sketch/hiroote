@@ -10,13 +10,15 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
-class PlannedScreensTest extends TestCase
+class NavigationTest extends TestCase
 {
     use RefreshDatabase;
 
     /**
-     * Every navigation entry must resolve — a 404 in the sidebar reads as a
-     * broken build rather than unfinished work.
+     * كل بند في القائمة الجانبية يفتح شاشةً حقيقية.
+     *
+     * لم يعد في اللوحة بندٌ «مخطَّط»: المستخدمون كانوا آخره، وحُذفت معه آليةُ
+     * الشاشة المخطَّطة كلها — صفحةٌ ومتحكّمٌ وشرحٌ لا يصل إليها أحد.
      */
     #[Test]
     public function every_navigation_entry_resolves_for_a_system_admin(): void
@@ -34,6 +36,8 @@ class PlannedScreensTest extends TestCase
             '/knowledge',
             '/audit',
             '/alerts',
+            '/bridge',
+            '/projects',
             '/users',
         ] as $path) {
             $this->actingAs($admin)->get($path)->assertOk();
@@ -41,7 +45,7 @@ class PlannedScreensTest extends TestCase
     }
 
     #[Test]
-    public function planned_screens_still_enforce_their_permission(): void
+    public function each_entry_still_enforces_its_permission(): void
     {
         $support = User::factory()->role(Role::SupportAgent)->create();
 
@@ -50,18 +54,5 @@ class PlannedScreensTest extends TestCase
 
         // موظف الدعم يملك صلاحية عرض التصعيد.
         $this->actingAs($support)->get('/escalations')->assertOk();
-    }
-
-    #[Test]
-    public function planned_screen_declares_its_phase(): void
-    {
-        $admin = User::factory()->role(Role::SystemAdmin)->create();
-
-        $this->actingAs($admin)
-            ->get('/users')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Planned/Index')
-                ->where('screen.title', 'المستخدمون والصلاحيات'));
     }
 }

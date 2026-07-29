@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domains\Administration\Http\UsersController;
 use App\Domains\Alerts\Http\AlertsController;
 use App\Domains\Analytics\Http\UsageController;
 use App\Domains\Assistants\Http\AssistantsController;
@@ -15,7 +16,6 @@ use App\Domains\Projects\Http\SwitchProjectController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\OverviewController;
-use App\Http\Controllers\PlannedScreenController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function (): void {
@@ -149,16 +149,17 @@ Route::middleware('auth')->group(function (): void {
             ->name('alerts.events.resolve');
     });
 
-    // الشاشات المخططة لمراحل لاحقة — تعرض نطاقها بدل خطأ 404، ويستبدل كل
-    // مسار بمتحكمه الحقيقي عند تنفيذ مرحلته.
-    $planned = [
-        'users' => 'users.view',
-    ];
+    Route::middleware('permission:users.view')->group(function (): void {
+        Route::get('/users', [UsersController::class, 'index'])->name('users.index');
+    });
 
-    foreach ($planned as $screen => $permission) {
-        Route::get("/{$screen}", PlannedScreenController::class)
-            ->defaults('screen', $screen)
-            ->middleware("permission:{$permission}")
-            ->name("{$screen}.index");
-    }
+    Route::middleware('permission:users.manage')->group(function (): void {
+        Route::post('/users', [UsersController::class, 'store'])->name('users.store');
+        Route::put('/users/{user}', [UsersController::class, 'update'])->name('users.update');
+        Route::post('/users/{user}/active', [UsersController::class, 'toggle'])->name('users.toggle');
+        Route::post('/users/{user}/memberships', [UsersController::class, 'attach'])
+            ->name('users.memberships.attach');
+        Route::delete('/users/{user}/memberships', [UsersController::class, 'detach'])
+            ->name('users.memberships.detach');
+    });
 });

@@ -30,12 +30,7 @@ const NAV_ITEMS: NavItem[] = [
     { label: 'الربط والتكامل', href: '/bridge', permission: 'integrations.view' },
     { label: 'التنبيهات', href: '/alerts', permission: 'alerts.view' },
     { label: 'سجل التشغيل', href: '/audit', permission: 'audit.view' },
-    {
-        label: 'المستخدمون والصلاحيات',
-        href: '/users',
-        permission: 'users.view',
-        planned: true,
-    },
+    { label: 'المستخدمون والصلاحيات', href: '/users', permission: 'users.view' },
 ];
 
 export interface AdminLayoutProps {
