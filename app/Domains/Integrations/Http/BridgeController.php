@@ -6,6 +6,7 @@ namespace App\Domains\Integrations\Http;
 
 use App\Domains\Administration\Actions\RecordAuditEntry;
 use App\Domains\Administration\DTOs\AuditEntry;
+use App\Domains\Alerts\Models\ProjectWebhook;
 use App\Domains\Analytics\Models\CostUsageRecord;
 use App\Domains\Analytics\Models\TokenUsageRecord;
 use App\Domains\Conversations\Models\Conversation;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Controller;
 use App\Support\Http\SystemStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -69,6 +71,13 @@ class BridgeController extends Controller
                 'last_error_at' => $bridge->last_error_at?->toIso8601String(),
             ],
             'methods' => $this->methods->forProject($project),
+            'webhook' => ($hook = ProjectWebhook::query()->forProject($project)->first()) === null ? null : [
+                'url' => $hook->url,
+                'is_enabled' => $hook->is_enabled,
+                'status' => $hook->statusLabel(),
+                'last_delivered_at' => $hook->last_delivered_at?->toIso8601String(),
+                'last_error' => $hook->last_error,
+            ],
             'snapshot' => $snapshot === []
                 ? null
                 : $this->presenter->present($snapshot, $this->localFigures($project)),
@@ -123,6 +132,60 @@ class BridgeController extends Controller
         ));
 
         return back()->with('success', 'حُفظ إعداد الجسر.');
+    }
+
+    /**
+     * ضبط وجهة دفع التنبيهات.
+     *
+     * السرّ الفارغ يعني «اترك المحفوظ» لا «امحُه» — كما في بيانات الجسر: من
+     * يصحّح عنوانًا لا ينوي إبطال توقيع كل دفعة بعده.
+     */
+    public function saveWebhook(Request $request, RecordAuditEntry $audit): RedirectResponse
+    {
+        $project = $this->current->require();
+
+        $data = $request->validate([
+            'url' => ['required', 'url', 'max:300'],
+            'secret' => ['nullable', 'string', 'min:16', 'max:200'],
+            'is_enabled' => ['boolean'],
+        ]);
+
+        $hook = ProjectWebhook::query()->firstOrNew(['project_id' => $project->id]);
+        $secret = $data['secret'] ?? null;
+
+        if (! $hook->exists && ($secret === null || $secret === '')) {
+            throw ValidationException::withMessages([
+                'secret' => 'السرّ مطلوب عند أول ضبط — بلا سرٍّ لا توقيع، وبلا توقيع لا تُميَّز دفعتنا عن غيرها.',
+            ]);
+        }
+
+        $hook->forceFill([
+            'project_id' => $project->id,
+            'url' => $data['url'],
+            'is_enabled' => (bool) ($data['is_enabled'] ?? true),
+            'updated_by' => auth()->id(),
+            // ضبطٌ جديد يمحو إخفاق الماضي: الحالة تصف الوجهة الحالية لا سابقتها،
+            // و«أخفقت» فوق عنوانٍ لم يُجرَّب بعد تتّهم ما لم يُختبر.
+            'last_error' => null,
+            'last_error_at' => null,
+        ]);
+
+        if (is_string($secret) && $secret !== '') {
+            $hook->secret = $secret;
+        }
+
+        $hook->save();
+
+        $audit->handle(new AuditEntry(
+            action: 'alerts.webhook_save',
+            auditable: $hook,
+            section: 'alerts',
+            // العنوان وحده — لا السرّ.
+            newValues: ['الوجهة' => $hook->url, 'مفعّلة' => $hook->is_enabled ? 'نعم' : 'لا'],
+            reason: "المشروع: {$project->name}",
+        ));
+
+        return back()->with('success', 'حُفظت وجهة التنبيهات.');
     }
 
     /**

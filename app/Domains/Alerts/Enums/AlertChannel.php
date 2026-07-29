@@ -51,7 +51,8 @@ enum AlertChannel: string implements PresentableEnum
                 ['log', 'array', 'null', ''],
                 strict: true,
             ),
-            self::Webhook => false,
+            // المسار مبنيّ؛ ووجودُ وجهةٍ مضبوطة يُفحص لكل مشروع عند الإرسال.
+            self::Webhook => true,
         };
     }
 
@@ -64,7 +65,7 @@ enum AlertChannel: string implements PresentableEnum
         return match ($this) {
             self::InApp => null,
             self::Email => 'ينتظر ضبط مُرسِل بريد حقيقي — المُرسِل الحالي يبتلع الرسالة.',
-            self::Webhook => 'لم يُبنَ بعد: يحتاج عنوان استقبال وسرَّ توقيع.',
+            self::Webhook => 'لا وجهة مضبوطة لهذا المشروع.',
         };
     }
 }

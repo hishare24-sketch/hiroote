@@ -13,6 +13,7 @@ import { EmptyState } from '@/Components/ui/EmptyState';
 import { Input } from '@/Components/ui/Input';
 import { PageHeader } from '@/Components/ui/PageHeader';
 import { Select } from '@/Components/ui/Select';
+import { Switch } from '@/Components/ui/Switch';
 import { usePermissions } from '@/Hooks/usePermissions';
 import {
     formatCompact,
@@ -149,11 +150,20 @@ interface Snapshot {
     derived: Derived[];
 }
 
+interface WebhookRow {
+    url: string;
+    is_enabled: boolean;
+    status: string;
+    last_delivered_at: string | null;
+    last_error: string | null;
+}
+
 interface Props {
     systemStatus: { label: string; tone: StatusTone };
     project: { id: number; name: string };
     bridge: BridgeRow | null;
     methods: ConnectionMethod[];
+    webhook: WebhookRow | null;
     snapshot: Snapshot | null;
     fetchedAt: string;
 }
@@ -178,6 +188,7 @@ export default function BridgeIndex({
     project,
     bridge,
     methods,
+    webhook,
     snapshot,
     fetchedAt,
 }: Props) {
@@ -236,8 +247,9 @@ export default function BridgeIndex({
             />
 
             <Alert tone="neutral" title="قراءة فقط">
-                هذه الشاشة تعرض ما في {project.name} ولا تغيّره. أي تعديل يبقى في لوحة المشروع نفسه
-                — والكتابة من هنا قرارٌ مؤجَّل لم يُبنَ له مسار.
+                ما يُعرض من {project.name} في هذه الشاشة مقروءٌ ولا يُغيَّر: أي تعديل يبقى في لوحة
+                المشروع نفسه، والكتابة في بياناته قرارٌ مؤجَّل لم يُبنَ له مسار. المسار الصادر
+                الوحيد هو دفع التنبيهات أدناه — يُرسل إنذارًا موقَّعًا ولا يمسّ بيانات المشروع.
             </Alert>
 
             {bridge === null ? null : (
@@ -274,6 +286,8 @@ export default function BridgeIndex({
                     <BridgeForm bridge={bridge} project={project} />
                 </div>
             )}
+
+            {manage ? <WebhookCard webhook={webhook} /> : null}
 
             {/*
              * الشرح بعد العمل لا قبله: بطاقات الطرق مرجعٌ يُقرأ مرة، وحالةُ
@@ -664,6 +678,128 @@ function BridgeForm({
             </CardBody>
         </Card>
     );
+}
+
+/**
+ * وجهة دفع التنبيهات — المسار الصادر الوحيد من هاي روت إلى المشروع.
+ *
+ * الحالة تُقرأ من آخر محاولة فعلية لا من كون الحقول ممتلئة: عنوانٌ محفوظ
+ * وسرٌّ محفوظ لا يعنيان أن شيئًا وصل، و«تعمل» بلا تسليمٍ ناجح تُقنع المشغّل
+ * بأن إنذاره يصل.
+ */
+function WebhookCard({ webhook }: { webhook: WebhookRow | null }) {
+    const form = useForm({
+        url: webhook?.url ?? '',
+        secret: '',
+        is_enabled: webhook?.is_enabled ?? true,
+    });
+
+    const tone: Tone = webhookTone(webhook?.status);
+    const lastError = webhook?.last_error ?? null;
+
+    return (
+        <Card>
+            <CardHeader
+                title="وجهة دفع التنبيهات"
+                description="هاي روت يدفع التنبيه المفتوح إلى هذا العنوان موقَّعًا — والتوقيع وحده يميّز دفعتنا"
+                actions={
+                    webhook === null ? null : (
+                        <span className="flex items-center gap-3">
+                            <Badge tone={tone}>{webhook.status}</Badge>
+                            <span className="text-caption text-fg-subtle">
+                                آخر تسليم:{' '}
+                                {webhook.last_delivered_at === null
+                                    ? 'لا شيء'
+                                    : formatRelative(webhook.last_delivered_at)}
+                            </span>
+                        </span>
+                    )
+                }
+            />
+            <CardBody>
+                <form
+                    className="flex flex-col gap-3"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        form.put('/bridge/webhook', { preserveScroll: true });
+                    }}
+                >
+                    {lastError === null ? null : (
+                        <Alert tone="danger" title="آخر محاولة أخفقت">
+                            {lastError}
+                        </Alert>
+                    )}
+
+                    <Input
+                        label="عنوان الوجهة"
+                        dir="ltr"
+                        required
+                        placeholder="https://api.mawazin.example/api/hiroote/alerts"
+                        value={form.data.url}
+                        error={form.errors.url}
+                        hint="مسار POST في المشروع يستقبل التنبيه ويتحقق من التوقيع."
+                        onChange={(event) => {
+                            form.setData('url', event.target.value);
+                        }}
+                    />
+
+                    <Input
+                        label="سرّ التوقيع"
+                        dir="ltr"
+                        type="password"
+                        value={form.data.secret}
+                        error={form.errors.secret}
+                        hint={
+                            webhook === null
+                                ? 'ستّة عشر محرفًا فأكثر — يُشفَّر في قاعدة البيانات ولا يُعرض بعد الحفظ.'
+                                : 'اتركه فارغًا للإبقاء على المحفوظ.'
+                        }
+                        onChange={(event) => {
+                            form.setData('secret', event.target.value);
+                        }}
+                    />
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <label className="flex items-center gap-2 text-caption text-fg-default">
+                            <Switch
+                                aria-label="تفعيل دفع التنبيهات"
+                                checked={form.data.is_enabled}
+                                onChange={(checked) => {
+                                    form.setData('is_enabled', checked);
+                                }}
+                            />
+                            مفعّلة
+                        </label>
+
+                        <Button type="submit" disabled={form.processing}>
+                            احفظ الوجهة
+                        </Button>
+                    </div>
+
+                    <p className="text-micro text-fg-subtle">
+                        الترويسة <span dir="ltr">X-Hiroote-Signature</span> تحمل{' '}
+                        <span dir="ltr">sha256=HMAC(secret, timestamp + &quot;.&quot; + body)</span>{' '}
+                        والطابع في <span dir="ltr">X-Hiroote-Timestamp</span> — احسبه على الجسم
+                        الخام قبل تحليله، ورُدّ ٢xx وإلا عُدَّت المحاولة إخفاقًا.
+                    </p>
+                </form>
+            </CardBody>
+        </Card>
+    );
+}
+
+function webhookTone(status: string | undefined): Tone {
+    switch (status) {
+        case 'تعمل':
+            return 'success';
+        case 'أخفقت':
+            return 'danger';
+        case 'موقوفة':
+        case 'غير مكتملة':
+            return 'neutral';
+        default:
+            return 'warning';
+    }
 }
 
 /** حالة المنصة التي يعمل فيها المساعد — مقروءة كما هي، بلا هوية شخص. */

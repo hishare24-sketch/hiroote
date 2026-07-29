@@ -92,6 +92,10 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('permission:integrations.manage')
         ->name('bridge.save');
 
+    Route::put('/bridge/webhook', [BridgeController::class, 'saveWebhook'])
+        ->middleware('permission:integrations.manage')
+        ->name('bridge.webhook.save');
+
     Route::get('/integrations', [SectionsController::class, 'index'])
         ->middleware('permission:integrations.view')
         ->name('integrations.index');

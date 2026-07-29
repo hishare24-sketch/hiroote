@@ -10,6 +10,7 @@ use App\Domains\Alerts\Mail\AlertOpened;
 use App\Domains\Alerts\Models\AlertEvent;
 use App\Domains\Alerts\Models\AlertRule;
 use App\Domains\Alerts\Models\NotificationDelivery;
+use App\Domains\Alerts\Models\ProjectWebhook;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
@@ -23,6 +24,8 @@ use Throwable;
  */
 final readonly class DispatchAlertNotifications
 {
+    public function __construct(private SendAlertWebhook $webhooks) {}
+
     public function handle(AlertEvent $event, AlertRule $rule): void
     {
         foreach ($rule->recipients as $recipient) {
@@ -35,9 +38,32 @@ final readonly class DispatchAlertNotifications
                 continue;
             }
 
-            if ($channel !== AlertChannel::Email) {
+            if ($channel === AlertChannel::InApp) {
                 // «داخل اللوحة» تصل بمجرّد وجود الصفّ: الشاشة تقرؤه.
                 $this->record($event, $recipient->user_id, $channel, $target, DeliveryStatus::Delivered, null);
+
+                continue;
+            }
+
+            if ($channel === AlertChannel::Webhook) {
+                $webhook = ProjectWebhook::query()->where('project_id', $event->project_id)->first();
+
+                if (! $webhook instanceof ProjectWebhook || ! $webhook->isUsable()) {
+                    $this->record($event, $recipient->user_id, $channel, $target, DeliveryStatus::Pending, 'لا وجهة مضبوطة لهذا المشروع.');
+
+                    continue;
+                }
+
+                $outcome = $this->webhooks->handle($webhook, $event, $rule);
+
+                $this->record(
+                    $event,
+                    $recipient->user_id,
+                    $channel,
+                    $webhook->url,
+                    $outcome['ok'] ? DeliveryStatus::Delivered : DeliveryStatus::Failed,
+                    $outcome['error'],
+                );
 
                 continue;
             }
