@@ -19,6 +19,7 @@ class PermissionGateTest extends TestCase
     public function every_permission_has_a_registered_gate(): void
     {
         $user = User::factory()->role(Role::SystemAdmin)->create();
+        $this->withProject();
 
         foreach (Permission::cases() as $permission) {
             $this->assertTrue(
@@ -32,6 +33,7 @@ class PermissionGateTest extends TestCase
     public function support_agent_cannot_manage_providers(): void
     {
         $user = User::factory()->role(Role::SupportAgent)->create();
+        $this->withProject();
 
         $this->assertTrue($user->can(Permission::ConversationsView->value));
         $this->assertFalse($user->can(Permission::ProvidersManage->value));
@@ -42,6 +44,7 @@ class PermissionGateTest extends TestCase
     public function security_auditor_is_read_only(): void
     {
         $user = User::factory()->role(Role::SecurityAuditor)->create();
+        $this->withProject();
 
         $this->assertTrue($user->can(Permission::AuditView->value));
         $this->assertTrue($user->can(Permission::AuditExport->value));
@@ -66,6 +69,7 @@ class PermissionGateTest extends TestCase
     public function deactivated_user_loses_every_permission(): void
     {
         $user = User::factory()->role(Role::SystemAdmin)->inactive()->create();
+        $this->withProject();
 
         foreach (Permission::cases() as $permission) {
             $this->assertFalse($user->can($permission->value));
@@ -78,6 +82,7 @@ class PermissionGateTest extends TestCase
         $this->get('/')->assertRedirect('/login');
 
         $user = User::factory()->role(Role::AiManager)->create();
+        $this->withProject();
         $this->actingAs($user)->get('/')->assertOk();
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domains\Analytics\Http\UsageController;
 use App\Domains\Conversations\Http\ConversationsController;
 use App\Domains\Conversations\Http\EscalationsController;
+use App\Domains\Projects\Http\SwitchProjectController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\PlannedScreenController;
@@ -19,6 +20,10 @@ Route::middleware('guest')->group(function (): void {
 
 Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
+    // التبديل بلا صلاحية خاصة: العضوية نفسها هي الإذن (ADR-0003 §4).
+    Route::post('/projects/{project}/switch', SwitchProjectController::class)
+        ->name('projects.switch');
 
     Route::get('/', OverviewController::class)
         ->middleware('permission:overview.view')

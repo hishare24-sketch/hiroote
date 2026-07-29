@@ -34,6 +34,8 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        // المشاريع أولًا: كل ما بعدها ينتمي إلى مشروع.
+        $this->call(ProjectsSeeder::class);
         $this->call(ProvidersSeeder::class);
         $this->call(DemoDataSeeder::class);
     }

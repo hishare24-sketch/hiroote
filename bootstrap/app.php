@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ResolveCurrentProject;
 use App\Support\Http\ApiErrorResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(AssignRequestId::class);
 
         $middleware->web(append: [
+            // قبل Inertia: الصلاحيات المشاركة مع الواجهة تعتمد على المشروع النشط.
+            ResolveCurrentProject::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

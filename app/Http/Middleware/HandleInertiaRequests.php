@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Domains\Administration\Models\User;
+use App\Domains\Projects\Models\Project;
+use App\Domains\Projects\Services\CurrentProject;
 use App\Support\Http\RequestId;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -30,6 +32,8 @@ final class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $current = app(CurrentProject::class);
+        $project = $current->get();
 
         return [
             ...parent::share($request),
@@ -38,16 +42,37 @@ final class HandleInertiaRequests extends Middleware
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'role' => $user->role->value,
-                    'role_label' => $user->role->label(),
+                    // الدور المعروض هو النافذ في هذا المشروع لا الافتراضي.
+                    'role' => $user->roleIn($project)?->value,
+                    'role_label' => $user->roleIn($project)?->label(),
+                    'is_platform_admin' => $user->is_platform_admin,
                 ] : null,
-                'permissions' => $user instanceof User ? $user->permissionNames() : [],
+                'permissions' => $user instanceof User ? $user->permissionNames($project) : [],
+            ],
+            'projects' => [
+                'current' => $project === null ? null : self::projectPayload($project),
+                'available' => $user instanceof User
+                    ? $current->availableTo($user)
+                        ->map(fn (Project $item): array => self::projectPayload($item))
+                        ->values()
+                        ->all()
+                    : [],
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
             'requestId' => fn (): string => RequestId::current(),
+        ];
+    }
+
+    /** @return array{id: int, name: string, slug: string} */
+    private static function projectPayload(Project $project): array
+    {
+        return [
+            'id' => $project->id,
+            'name' => $project->name,
+            'slug' => $project->slug,
         ];
     }
 }

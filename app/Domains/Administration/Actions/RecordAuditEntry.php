@@ -7,6 +7,7 @@ namespace App\Domains\Administration\Actions;
 use App\Domains\Administration\DTOs\AuditEntry;
 use App\Domains\Administration\Models\AuditLog;
 use App\Domains\Administration\Models\User;
+use App\Domains\Projects\Services\CurrentProject;
 use App\Support\Http\RequestId;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ final readonly class RecordAuditEntry
     public function __construct(
         private AuthFactory $auth,
         private Request $request,
+        private CurrentProject $project,
     ) {}
 
     public function handle(AuditEntry $entry): AuditLog
@@ -30,6 +32,8 @@ final readonly class RecordAuditEntry
         $actor = $this->auth->guard()->user();
 
         return AuditLog::query()->create([
+            // null = حدث على مستوى الشركة لا يخص مشروعًا بعينه.
+            'project_id' => $this->project->id(),
             'actor_id' => $actor?->getAuthIdentifier(),
             'actor_label' => $actor instanceof User ? $actor->email : null,
             'actor_role' => $actor instanceof User ? $actor->role->value : null,

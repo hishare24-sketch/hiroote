@@ -1,6 +1,7 @@
 # Hiroote AI — دليل وكلاء الذكاء الاصطناعي
 
-منصة مستقلة لإدارة المساعد الذكي وربطه بمنصة Hi-Share عبر API فقط.
+مركز تحكم لكل مشاريع الشركة — لكل مشروع لوحة مستقلة، والربط مع كل مشروع عبر API فقط.
+Hi-Share هو المشروع الأول لا نطاق المنصة (ADR-0003).
 **اقرأ الوثائق في `docs/` قبل أول مساهمة** (قاعدة ملزمة — وثيقة 04 §5).
 
 ## المرجعية
@@ -18,7 +19,7 @@
 ## البنية
 
 - **Laravel 13 + Inertia + React 19 + TypeScript strict + Tailwind 4** — قاعدة البيانات **PostgreSQL 16**، الكاش والطوابير **Redis**.
-- الكود مقسوم إلى Domains تحت `app/Domains/{Providers,Conversations,Knowledge,Integrations,Analytics,Alerts,Administration}` — كل Domain يحوي `Actions, DTOs, Models, Policies, Jobs, Events, Services, Enums`.
+- الكود مقسوم إلى Domains تحت `app/Domains/{Projects,Providers,Conversations,Knowledge,Integrations,Analytics,Alerts,Administration}` — كل Domain يحوي `Actions, DTOs, Models, Policies, Jobs, Events, Services, Enums`.
 - تسجيل مسارات/هجرات الـ Domain يتم تلقائيًا عبر `app/Providers/DomainServiceProvider.php` (ضع `Routes/web.php` أو `Database/Migrations` داخل الـ Domain).
 - الواجهة: صفحات Inertia في `resources/js/Pages`، المكونات المشتركة في `resources/js/Components/ui`، الأنواع المشتركة في `resources/js/types/index.ts`.
 - **RTL افتراضي** — استخدم الخصائص المنطقية (`ms-*`, `me-*`, `ps-*`, `pe-*`, `start`, `end`) وليس `ml/mr/pl/pr/left/right`.
@@ -27,13 +28,14 @@
 
 ## قواعد غير قابلة للتفاوض
 
-1. **ممنوع الاتصال المباشر بقاعدة بيانات Hi-Share** — التكامل عبر REST `/api/v1` فقط (وثيقة 02 §5).
+1. **ممنوع الاتصال المباشر بقاعدة بيانات أي مشروع** — التكامل عبر REST فقط (وثيقة 02 §5).
 2. **ممنوع استدعاء مزود ذكاء خارج طبقة الـ Orchestrator** عند بنائها (وثيقة 02 §4).
-3. **الصلاحيات**: كل صلاحية تُعرّف في `Permission` enum وتُمنح عبر مصفوفة `Role::permissions()` — لا `Gate::before` ولا تجاوزات. الواجهة تخفي فقط؛ الخادم يعيد التحقق دائمًا.
-4. **`audit_logs` append-only** — محمي بـ triggers في PostgreSQL. كل تغيير حساس يسجل عبر `RecordAuditEntry`.
-5. **الاختبار على PostgreSQL** (`hiroote_test`) وليس SQLite — نفس محرك الإنتاج (وثيقة 03 §10).
-6. **لا تدعي نجاح اختبار لم تشغله** (وثيقة 04 §5).
-7. **قاعدة التوقف** (وثيقة 04 §12): توقف واطلب قرارًا عند تضارب متطلبات، احتمال فقد بيانات، تغيير أمني كبير، أو تجاوز نطاق يمس الإنتاج.
+3. **الصلاحيات**: كل صلاحية تُعرّف في `Permission` enum وتُمنح عبر مصفوفة `Role::permissions()` — لا `Gate::before` ولا تجاوزات. الدور يُحلّ **لكل مشروع** من `project_user`؛ و`is_platform_admin` عضويةٌ بدور `SystemAdmin` في كل مشروع لا استثناءٌ من البوابة. الواجهة تخفي فقط؛ الخادم يعيد التحقق دائمًا.
+4. **كل استعلام تشغيلي مقيَّد بالمشروع الحالي** على الخادم — لا يُعتمد على الواجهة في العزل.
+5. **`audit_logs` append-only** — محمي بـ triggers في PostgreSQL. كل تغيير حساس يسجل عبر `RecordAuditEntry`.
+6. **الاختبار على PostgreSQL** (`hiroote_test`) وليس SQLite — نفس محرك الإنتاج (وثيقة 03 §10).
+7. **لا تدعي نجاح اختبار لم تشغله** (وثيقة 04 §5).
+8. **قاعدة التوقف** (وثيقة 04 §12): توقف واطلب قرارًا عند تضارب متطلبات، احتمال فقد بيانات، تغيير أمني كبير، أو تجاوز نطاق يمس الإنتاج.
 
 ## بوابات الجودة (شغّلها قبل أي تسليم)
 

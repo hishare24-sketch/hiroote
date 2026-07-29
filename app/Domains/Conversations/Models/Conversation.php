@@ -6,6 +6,7 @@ namespace App\Domains\Conversations\Models;
 
 use App\Domains\Conversations\Enums\AssistantLevel;
 use App\Domains\Conversations\Enums\ConversationOutcome;
+use App\Domains\Projects\Models\Concerns\BelongsToProject;
 use App\Domains\Providers\Models\AiModel;
 use App\Domains\Providers\Models\AiProvider;
 use Database\Factories\ConversationFactory;
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property int $project_id
  * @property string $reference
  * @property string|null $user_label
  * @property string|null $external_user_id
@@ -44,6 +46,8 @@ use Illuminate\Support\Carbon;
  */
 class Conversation extends Model
 {
+    use BelongsToProject;
+
     /** @use HasFactory<ConversationFactory> */
     use HasFactory;
 

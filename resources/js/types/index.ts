@@ -47,14 +47,26 @@ export interface AuthUser {
     id: number;
     name: string;
     email: string;
-    role: Role;
-    role_label: string;
+    /** الدور النافذ في المشروع الحالي — null إن لم يكن عضوًا فيه (ADR-0003 §3). */
+    role: Role | null;
+    role_label: string | null;
+    is_platform_admin: boolean;
+}
+
+export interface ProjectSummary {
+    id: number;
+    name: string;
+    slug: string;
 }
 
 export interface SharedProps {
     auth: {
         user: AuthUser | null;
         permissions: Permission[];
+    };
+    projects: {
+        current: ProjectSummary | null;
+        available: ProjectSummary[];
     };
     flash: {
         success: string | null;

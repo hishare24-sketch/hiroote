@@ -8,6 +8,7 @@ use App\Domains\Analytics\Models\CostUsageRecord;
 use App\Domains\Analytics\Models\TokenUsageRecord;
 use App\Domains\Analytics\Models\UsageBudget;
 use App\Domains\Conversations\Models\Conversation;
+use App\Domains\Projects\Models\Project;
 use App\Domains\Providers\Models\AiProvider;
 use App\Support\Http\Period;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,7 +24,7 @@ final readonly class UsageReport
 {
     private const TONES = ['accent', 'info', 'success', 'warning', 'neutral', 'danger'];
 
-    public function __construct(private Period $period) {}
+    public function __construct(private Period $period, private Project $project) {}
 
     /**
      * البطاقات الرئيسية التسع.
@@ -152,6 +153,7 @@ final readonly class UsageReport
 
         $currentTokens = $this->totals()['total_tokens'];
         $previousTokens = (int) TokenUsageRecord::query()
+            ->forProject($this->project)
             ->whereBetween('created_at', [$previous->from, $previous->to])
             ->selectRaw('sum(input_tokens + output_tokens + knowledge_tokens + attachment_tokens + tool_tokens) as total')
             ->toBase()
@@ -159,6 +161,7 @@ final readonly class UsageReport
 
         $currentCost = $this->costSum($this->costQuery());
         $previousCost = (float) CostUsageRecord::query()
+            ->forProject($this->project)
             ->whereBetween('created_at', [$previous->from, $previous->to])
             ->sum('amount');
 
@@ -183,7 +186,10 @@ final readonly class UsageReport
         $rows = $this->costQuery()
             ->leftJoin('ai_providers', 'ai_providers.id', '=', 'cost_usage_records.provider_id')
             ->selectRaw('ai_providers.name as label, sum(cost_usage_records.amount) as cost')
-            ->selectRaw('(select coalesce(sum(t.input_tokens + t.output_tokens + t.knowledge_tokens + t.attachment_tokens + t.tool_tokens), 0) from token_usage_records t where t.provider_id = ai_providers.id) as tokens')
+            ->selectRaw(
+                '(select coalesce(sum(t.input_tokens + t.output_tokens + t.knowledge_tokens + t.attachment_tokens + t.tool_tokens), 0) from token_usage_records t where t.provider_id = ai_providers.id and t.project_id = ?) as tokens',
+                [$this->project->id],
+            )
             ->groupBy('ai_providers.id', 'ai_providers.name')
             ->orderByDesc('cost')
             ->toBase()
@@ -247,6 +253,7 @@ final readonly class UsageReport
         $cost = $this->costSum($this->costQuery());
 
         $conversations = Conversation::query()
+            ->forProject($this->project)
             ->whereBetween('started_at', [$this->period->from, $this->period->to]);
 
         $count = (clone $conversations)->count();
@@ -298,7 +305,11 @@ final readonly class UsageReport
      */
     public function budget(): ?array
     {
-        $budget = UsageBudget::query()->where('scope', 'platform')->whereNull('scope_key')->first();
+        $budget = UsageBudget::query()
+            ->where('project_id', $this->project->id)
+            ->where('scope', 'platform')
+            ->whereNull('scope_key')
+            ->first();
 
         if ($budget === null) {
             return null;
@@ -306,6 +317,7 @@ final readonly class UsageReport
 
         // الميزانية شهرية دائمًا — تُقاس على الشهر الجاري لا على مدى الفلتر.
         $spent = (float) CostUsageRecord::query()
+            ->forProject($this->project)
             ->whereBetween('recorded_on', [
                 Carbon::now()->startOfMonth()->toDateString(),
                 Carbon::now()->endOfMonth()->toDateString(),
@@ -344,6 +356,7 @@ final readonly class UsageReport
     private function tokenQuery(): Builder
     {
         return TokenUsageRecord::query()
+            ->forProject($this->project)
             ->whereBetween('recorded_on', [
                 $this->period->from->toDateString(),
                 $this->period->to->toDateString(),
@@ -354,6 +367,7 @@ final readonly class UsageReport
     private function costQuery(): Builder
     {
         return CostUsageRecord::query()
+            ->forProject($this->project)
             ->whereBetween('recorded_on', [
                 $this->period->from->toDateString(),
                 $this->period->to->toDateString(),
@@ -374,6 +388,7 @@ final readonly class UsageReport
         $now = Carbon::now();
 
         $spent = (float) CostUsageRecord::query()
+            ->forProject($this->project)
             ->whereBetween('recorded_on', [$now->copy()->startOfMonth()->toDateString(), $now->toDateString()])
             ->sum('amount');
 

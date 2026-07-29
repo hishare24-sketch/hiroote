@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Analytics\Models;
 
 use App\Domains\Conversations\Models\Conversation;
+use App\Domains\Projects\Models\Concerns\BelongsToProject;
 use App\Domains\Providers\Models\AiProvider;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +16,7 @@ use LogicException;
  * سجل توكن — append-only على مستوى قاعدة البيانات (وثيقة 02 §8).
  *
  * @property int $id
+ * @property int $project_id
  * @property int $input_tokens
  * @property int $output_tokens
  * @property int $knowledge_tokens
@@ -25,6 +27,8 @@ use LogicException;
  */
 class TokenUsageRecord extends Model
 {
+    use BelongsToProject;
+
     public const UPDATED_AT = null;
 
     protected $guarded = [];

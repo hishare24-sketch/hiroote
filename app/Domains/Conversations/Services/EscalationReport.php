@@ -9,6 +9,7 @@ use App\Domains\Conversations\Enums\EscalationSeverity;
 use App\Domains\Conversations\Enums\EscalationTarget;
 use App\Domains\Conversations\Models\Conversation;
 use App\Domains\Conversations\Models\ConversationEscalation;
+use App\Domains\Projects\Models\Project;
 use App\Support\Enums\EnumPayload;
 use App\Support\Http\Period;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final readonly class EscalationReport
 {
-    public function __construct(private Period $period) {}
+    public function __construct(private Period $period, private Project $project) {}
 
     /**
      * @return list<array{
@@ -64,6 +65,7 @@ final readonly class EscalationReport
     public function journey(): array
     {
         $conversations = Conversation::query()
+            ->forProject($this->project)
             ->whereBetween('started_at', [$this->period->from, $this->period->to]);
 
         $total = (clone $conversations)->count();
@@ -168,6 +170,7 @@ final readonly class EscalationReport
     {
         return EscalationPresenter::rows(
             ConversationEscalation::query()
+                ->forProject($this->project)
                 ->whereNull('resolved_at')
                 ->with('conversation:id,reference')
                 ->orderByRaw("case severity when 'critical' then 0 when 'high' then 1 when 'medium' then 2 else 3 end")
@@ -183,6 +186,7 @@ final readonly class EscalationReport
     public function totals(): array
     {
         $conversations = Conversation::query()
+            ->forProject($this->project)
             ->whereBetween('started_at', [$this->period->from, $this->period->to]);
 
         $total = (clone $conversations)->count();
@@ -207,6 +211,7 @@ final readonly class EscalationReport
     private function baseQuery(): Builder
     {
         return ConversationEscalation::query()
+            ->forProject($this->project)
             ->whereBetween('created_at', [$this->period->from, $this->period->to]);
     }
 

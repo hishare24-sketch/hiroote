@@ -124,7 +124,7 @@ export default function UsageIndex({
                 <StatCard
                     label="الرصيد المتبقي"
                     value={formatMoney(totals.remaining_balance, totals.currency, 0)}
-                    caption="مجموع أرصدة المزودين المفعّلين"
+                    caption="رصيد المزودين المشترك بين كل المشاريع"
                     icon={Wallet}
                     tone={
                         totals.remaining_balance > totals.projected_month_cost

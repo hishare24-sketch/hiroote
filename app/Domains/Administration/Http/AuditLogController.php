@@ -6,6 +6,7 @@ namespace App\Domains\Administration\Http;
 
 use App\Domains\Administration\Enums\AuditCategory;
 use App\Domains\Administration\Models\AuditLog;
+use App\Domains\Projects\Services\CurrentProject;
 use App\Http\Controllers\Controller;
 use App\Support\Http\SystemStatus;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,8 @@ use Inertia\Response;
  */
 class AuditLogController extends Controller
 {
+    public function __construct(private readonly CurrentProject $current) {}
+
     public function index(Request $request): Response
     {
         $filters = [
@@ -58,8 +61,8 @@ class AuditLogController extends Controller
             'logs' => $logs,
             'filters' => $filters,
             'stats' => $this->stats(),
-            'availableActions' => AuditLog::query()->distinct()->orderBy('action')->pluck('action'),
-            'availableSections' => AuditLog::query()
+            'availableActions' => $this->baseQuery($filters)->distinct()->orderBy('action')->pluck('action'),
+            'availableSections' => $this->baseQuery($filters)
                 ->whereNotNull('section')
                 ->distinct()
                 ->orderBy('section')
@@ -74,6 +77,7 @@ class AuditLogController extends Controller
     private function baseQuery(array $filters): Builder
     {
         return AuditLog::query()
+            ->visibleInProject($this->current->require())
             ->when($filters['search'] !== '', function (Builder $query) use ($filters): void {
                 $term = '%'.$filters['search'].'%';
                 $query->where(function (Builder $inner) use ($term): void {
@@ -96,14 +100,20 @@ class AuditLogController extends Controller
     private function stats(): array
     {
         return [
-            'today' => AuditLog::query()->whereDate('created_at', today())->count(),
-            'settingsChanges' => AuditLog::query()->where('action', 'like', 'settings.%')->count(),
-            'failovers' => AuditLog::query()->where('action', 'like', '%failover%')->count(),
-            'failures' => AuditLog::query()
+            'today' => $this->scoped()->whereDate('created_at', today())->count(),
+            'settingsChanges' => $this->scoped()->where('action', 'like', 'settings.%')->count(),
+            'failovers' => $this->scoped()->where('action', 'like', '%failover%')->count(),
+            'failures' => $this->scoped()
                 ->where(fn (Builder $query) => $query
                     ->where('action', 'like', '%failed%')
                     ->orWhere('action', 'like', '%error%'))
                 ->count(),
         ];
+    }
+
+    /** @return Builder<AuditLog> */
+    private function scoped(): Builder
+    {
+        return AuditLog::query()->visibleInProject($this->current->require());
     }
 }

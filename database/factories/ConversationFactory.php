@@ -63,6 +63,7 @@ class ConversationFactory extends Factory
         ]);
 
         return [
+            'project_id' => fn (): int => ProjectFactory::default()->id,
             'reference' => '#HS-'.fake()->unique()->numberBetween(50000, 59999),
             'user_label' => $user['name'],
             'external_user_id' => $user['id'],

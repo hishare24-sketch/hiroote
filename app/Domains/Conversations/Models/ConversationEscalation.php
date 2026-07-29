@@ -6,13 +6,16 @@ namespace App\Domains\Conversations\Models;
 
 use App\Domains\Conversations\Enums\EscalationSeverity;
 use App\Domains\Conversations\Enums\EscalationTarget;
+use App\Domains\Projects\Models\Concerns\BelongsToProject;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use LogicException;
 
 /**
  * @property int $id
+ * @property int $project_id
  * @property int|null $conversation_id
  * @property string $reference
  * @property EscalationTarget $target
@@ -27,6 +30,7 @@ use Illuminate\Support\Carbon;
  */
 class ConversationEscalation extends Model
 {
+    use BelongsToProject;
     use HasUlids;
 
     public const UPDATED_AT = null;
@@ -37,6 +41,31 @@ class ConversationEscalation extends Model
     public function uniqueIds(): array
     {
         return ['ulid'];
+    }
+
+    /**
+     * التصعيد يرث مشروع محادثته دائمًا.
+     *
+     * الاشتقاق هنا لا في كل موضع إنشاء: تصعيدٌ يخالف مشروع محادثته حالة لا
+     * معنى لها، ومنعها في النموذج أضمن من تذكّرها في كل مُنشئ.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $escalation): void {
+            if ($escalation->getAttribute('project_id') !== null) {
+                return;
+            }
+
+            $inherited = $escalation->conversation?->project_id;
+
+            if ($inherited === null) {
+                throw new LogicException(
+                    'تصعيد بلا مشروع ولا محادثة يُشتق منها — لا يمكن تحديد مالكه.',
+                );
+            }
+
+            $escalation->project_id = $inherited;
+        });
     }
 
     /** @return array<string, string> */

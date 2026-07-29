@@ -14,6 +14,7 @@ use App\Domains\Conversations\Enums\MessageRole;
 use App\Domains\Conversations\Enums\ToolOutcome;
 use App\Domains\Conversations\Models\Conversation;
 use App\Domains\Conversations\Models\ConversationEscalation;
+use App\Domains\Projects\Models\Project;
 use App\Domains\Providers\Models\AiProvider;
 use Database\Factories\SeedVocabulary;
 use Illuminate\Database\Seeder;
@@ -28,7 +29,8 @@ use Illuminate\Support\Carbon;
  */
 class DemoDataSeeder extends Seeder
 {
-    private const CONVERSATION_COUNT = 180;
+    /** حجم كل مشروع مختلف عمدًا: مركز تحكم يقارن مشاريع متفاوتة لا متطابقة. */
+    private const CONVERSATION_COUNTS = ['hi-share' => 180, 'mawazin' => 95];
 
     public function run(): void
     {
@@ -46,28 +48,36 @@ class DemoDataSeeder extends Seeder
             return;
         }
 
-        UsageBudget::query()->firstOrCreate(
-            ['scope' => 'platform', 'scope_key' => null],
-            ['monthly_limit' => '6750.00', 'currency' => 'SAR'],
-        );
+        foreach (self::CONVERSATION_COUNTS as $slug => $count) {
+            $project = Project::query()->where('slug', $slug)->first();
 
-        Conversation::factory()
-            ->count(self::CONVERSATION_COUNT)
-            ->create()
-            ->each(function (Conversation $conversation) use ($providers): void {
-                $provider = $providers->random();
+            if ($project === null) {
+                continue;
+            }
 
-                $conversation->forceFill([
-                    'provider_id' => $provider->id,
-                    'model_id' => $provider->models->firstWhere('is_default', true)?->id,
-                ])->save();
+            UsageBudget::query()->firstOrCreate(
+                ['project_id' => $project->id, 'scope' => 'platform', 'scope_key' => null],
+                ['monthly_limit' => $slug === 'hi-share' ? '6750.00' : '3200.00', 'currency' => 'SAR'],
+            );
 
-                $this->seedTimeline($conversation);
-                $this->seedUsage($conversation, $provider);
-                $this->seedEscalation($conversation);
-            });
+            Conversation::factory()
+                ->count($count)
+                ->create(['project_id' => $project->id])
+                ->each(function (Conversation $conversation) use ($providers, $project): void {
+                    $provider = $providers->random();
 
-        $this->openRecentEscalations();
+                    $conversation->forceFill([
+                        'provider_id' => $provider->id,
+                        'model_id' => $provider->models->firstWhere('is_default', true)?->id,
+                    ])->save();
+
+                    $this->seedTimeline($conversation);
+                    $this->seedUsage($conversation, $provider, $project);
+                    $this->seedEscalation($conversation, $project);
+                });
+
+            $this->openRecentEscalations($project);
+        }
     }
 
     /**
@@ -76,7 +86,7 @@ class DemoDataSeeder extends Seeder
      * تُنفَّذ بعد التوليد لا أثناءه: الاعتماد على الاحتمال وحده كان يخرج أحيانًا
      * بصفر حالة مفتوحة، فتبدو الشاشة فارغة بلا سبب.
      */
-    private function openRecentEscalations(): void
+    private function openRecentEscalations(Project $project): void
     {
         $severities = [
             EscalationSeverity::Critical,
@@ -89,6 +99,7 @@ class DemoDataSeeder extends Seeder
         ];
 
         ConversationEscalation::query()
+            ->forProject($project)
             ->orderByDesc('created_at')
             ->limit(count($severities))
             ->get()
@@ -155,7 +166,7 @@ class DemoDataSeeder extends Seeder
         ]);
     }
 
-    private function seedUsage(Conversation $conversation, AiProvider $provider): void
+    private function seedUsage(Conversation $conversation, AiProvider $provider, Project $project): void
     {
         $total = $conversation->total_tokens;
 
@@ -166,6 +177,7 @@ class DemoDataSeeder extends Seeder
         $attachment = (int) round($total * 0.02);
 
         TokenUsageRecord::query()->create([
+            'project_id' => $project->id,
             'conversation_id' => $conversation->id,
             'provider_id' => $provider->id,
             'model_id' => $conversation->model_id,
@@ -179,6 +191,7 @@ class DemoDataSeeder extends Seeder
         ]);
 
         CostUsageRecord::query()->create([
+            'project_id' => $project->id,
             'conversation_id' => $conversation->id,
             'provider_id' => $provider->id,
             'section' => $conversation->section,
@@ -189,7 +202,7 @@ class DemoDataSeeder extends Seeder
         ]);
     }
 
-    private function seedEscalation(Conversation $conversation): void
+    private function seedEscalation(Conversation $conversation, Project $project): void
     {
         $target = match ($conversation->outcome) {
             ConversationOutcome::Ticket => EscalationTarget::Ticket,
@@ -214,6 +227,7 @@ class DemoDataSeeder extends Seeder
         ]);
 
         $conversation->escalations()->create([
+            'project_id' => $project->id,
             'reference' => $this->escalationReference($target),
             'target' => $target,
             'severity' => $severity,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Conversations\Http;
 
 use App\Domains\Conversations\Services\EscalationReport;
+use App\Domains\Projects\Services\CurrentProject;
 use App\Http\Controllers\Controller;
 use App\Support\Http\Period;
 use App\Support\Http\SystemStatus;
@@ -17,10 +18,12 @@ use Inertia\Response;
  */
 class EscalationsController extends Controller
 {
+    public function __construct(private readonly CurrentProject $current) {}
+
     public function __invoke(Request $request): Response
     {
         $period = Period::fromRequest($request);
-        $report = new EscalationReport($period);
+        $report = new EscalationReport($period, $this->current->require());
 
         return Inertia::render('Escalations/Index', [
             'systemStatus' => SystemStatus::current(),

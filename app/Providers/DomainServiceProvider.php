@@ -20,6 +20,9 @@ class DomainServiceProvider extends ServiceProvider
      * @var list<string>
      */
     public const DOMAINS = [
+        // Projects أولًا: هجراته تنشئ الجدول الذي تشير إليه بقية المجالات.
+        'Projects',
+        'Assistants',
         'Providers',
         'Conversations',
         'Knowledge',

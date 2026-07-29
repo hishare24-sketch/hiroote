@@ -10,6 +10,7 @@ use App\Domains\Conversations\Models\Conversation;
 use App\Domains\Conversations\Models\ConversationEscalation;
 use App\Domains\Conversations\Services\ConversationReport;
 use App\Domains\Conversations\Services\EscalationPresenter;
+use App\Domains\Projects\Services\CurrentProject;
 use App\Domains\Providers\Models\AiProvider;
 use App\Http\Controllers\Controller;
 use App\Support\Enums\EnumPayload;
@@ -25,6 +26,8 @@ use Inertia\Response;
  */
 class ConversationsController extends Controller
 {
+    public function __construct(private readonly CurrentProject $current) {}
+
     public function index(Request $request): Response
     {
         $period = Period::fromRequest($request);
@@ -60,14 +63,20 @@ class ConversationsController extends Controller
             'frictionPoints' => $report->frictionPoints($this->baseQuery($period, $filters)),
             'conversations' => $conversations,
             'outcomeOptions' => $this->outcomeOptions(),
-            'sectionOptions' => Conversation::query()->distinct()->orderBy('section')->pluck('section'),
+            'sectionOptions' => Conversation::query()
+                ->forProject($this->current->require())
+                ->distinct()
+                ->orderBy('section')
+                ->pluck('section'),
             'providerOptions' => AiProvider::query()->orderBy('priority')->pluck('name', 'slug'),
         ]);
     }
 
     public function show(Request $request, Conversation $conversation): Response
     {
-        // النص الخام لمحادثة مستخدم Hi-Share صلاحية منفصلة (وثيقة 05 §8):
+        abort_unless($conversation->project_id === $this->current->require()->id, 404);
+
+        // النص الخام لمحادثة مستخدم المشروع صلاحية منفصلة (وثيقة 05 §8):
         // محلل التكلفة والمراجع الأمني يريان المقاييس والمسار، لا ما قاله المستخدم.
         $canViewContent = $request->user()?->can(Permission::ConversationsViewContent->value) ?? false;
 
@@ -142,6 +151,7 @@ class ConversationsController extends Controller
     private function baseQuery(Period $period, array $filters): Builder
     {
         return Conversation::query()
+            ->forProject($this->current->require())
             ->whereBetween('started_at', [$period->from, $period->to])
             ->when($filters['section'] !== '', fn (Builder $q) => $q->where('section', $filters['section']))
             ->when($filters['outcome'] !== '', fn (Builder $q) => $q->where('outcome', $filters['outcome']))

@@ -5,6 +5,7 @@ import type { Permission, SharedProps } from '@/types';
 import { usePermissions } from '@/Hooks/usePermissions';
 import { useTheme } from '@/Hooks/useTheme';
 import { Alert } from '@/Components/ui/Alert';
+import { ProjectSwitcher } from '@/Components/ui/ProjectSwitcher';
 import { cn } from '@/lib/cn';
 
 interface NavItem {
@@ -100,9 +101,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
     const sidebar = (
         <>
-            <div className="px-6 py-6">
+            <div className="px-6 pt-6 pb-4">
                 <p className="text-display font-bold text-accent">Hiroote AI</p>
-                <p className="mt-0.5 text-caption text-fg-muted">إدارة المساعد الذكي</p>
+                <p className="mt-0.5 text-caption text-fg-muted">مركز تحكم المشاريع</p>
+            </div>
+
+            {/* المبدّل فوق التنقل لا تحته: كل رابط أسفله يقرأ بيانات هذا المشروع. */}
+            <div className="px-3 pb-4">
+                <ProjectSwitcher />
             </div>
 
             <nav
@@ -118,7 +124,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
             <div className="border-t border-border-default px-6 py-4">
                 <p className="truncate text-body font-medium text-fg-default">{auth.user?.name}</p>
-                <p className="truncate text-caption text-fg-muted">{auth.user?.role_label}</p>
+                <p className="truncate text-caption text-fg-muted">
+                    {auth.user?.is_platform_admin === true
+                        ? 'مدير المنصة'
+                        : (auth.user?.role_label ?? 'بلا دور في هذا المشروع')}
+                </p>
 
                 <div className="mt-3 flex items-center gap-1">
                     <button

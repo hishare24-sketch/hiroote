@@ -6,10 +6,12 @@ namespace App\Http\Controllers;
 
 use App\Domains\Administration\Enums\AuditCategory;
 use App\Domains\Administration\Models\AuditLog;
+use App\Domains\Projects\Services\CurrentProject;
 use App\Domains\Providers\Enums\ProviderSetting;
 use App\Domains\Providers\Models\AiProvider;
 use App\Domains\Providers\Models\ProviderSettingValue;
 use App\Support\Http\SystemStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -69,7 +71,7 @@ class OverviewController extends Controller
                 [
                     'key' => 'audit',
                     'label' => 'أحداث اليوم',
-                    'value' => (string) AuditLog::query()->whereDate('created_at', today())->count(),
+                    'value' => (string) $this->auditScope()->whereDate('created_at', today())->count(),
                     'caption' => 'مسجلة في سجل التدقيق',
                     'tone' => 'success',
                 ],
@@ -99,7 +101,7 @@ class OverviewController extends Controller
                 ])
                 ->values(),
 
-            'recentActivity' => AuditLog::query()
+            'recentActivity' => $this->auditScope()
                 ->latest('id')
                 ->limit(6)
                 ->get()
@@ -167,5 +169,15 @@ class OverviewController extends Controller
                 'cta' => null,
             ],
         ];
+    }
+
+    /**
+     * سجل التدقيق مقيَّدًا بالمشروع النشط — النظرة العامة نظرةٌ على مشروع واحد.
+     *
+     * @return Builder<AuditLog>
+     */
+    private function auditScope(): Builder
+    {
+        return AuditLog::query()->visibleInProject(app(CurrentProject::class)->require());
     }
 }

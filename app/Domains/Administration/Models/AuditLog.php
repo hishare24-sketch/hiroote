@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Administration\Models;
 
+use App\Domains\Projects\Models\Concerns\BelongsToProject;
+use App\Domains\Projects\Models\Project;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +21,7 @@ use LogicException;
  * development instead of a raw driver exception at runtime.
  *
  * @property int $id
+ * @property int|null $project_id
  * @property string $ulid
  * @property int|null $actor_id
  * @property string|null $actor_label
@@ -37,6 +40,7 @@ use LogicException;
  */
 class AuditLog extends Model
 {
+    use BelongsToProject;
     use HasUlids;
 
     public const UPDATED_AT = null;
@@ -88,5 +92,20 @@ class AuditLog extends Model
         static::deleting(static function (): never {
             throw new LogicException('audit_logs entries are immutable and cannot be deleted.');
         });
+    }
+
+    /**
+     * ما يراه مشغّل داخل مشروع: أحداث مشروعه وأحداث المنصة العامة.
+     *
+     * حدث بلا مشروع (`null`) حدثٌ على مستوى الشركة — إخفاؤه يترك تغييرًا حساسًا
+     * بلا شاهد، وإظهاره لكل المشاريع لا يكشف بيانات مشروع بعينه.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeVisibleInProject(Builder $query, Project $project): void
+    {
+        $query->where(fn (Builder $inner) => $inner
+            ->where('project_id', $project->id)
+            ->orWhereNull('project_id'));
     }
 }

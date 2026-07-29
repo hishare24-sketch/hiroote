@@ -9,6 +9,7 @@ use App\Domains\Administration\Models\User;
 use App\Domains\Analytics\Models\CostUsageRecord;
 use App\Domains\Analytics\Models\TokenUsageRecord;
 use App\Domains\Analytics\Models\UsageBudget;
+use Database\Factories\ProjectFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -33,6 +34,7 @@ class UsageScreenTest extends TestCase
     public function totals_sum_every_token_category(): void
     {
         TokenUsageRecord::query()->create([
+            'project_id' => ProjectFactory::default()->id,
             'section' => 'المحفظة',
             'input_tokens' => 620,
             'output_tokens' => 290,
@@ -59,6 +61,7 @@ class UsageScreenTest extends TestCase
     public function the_series_fills_days_with_no_usage(): void
     {
         TokenUsageRecord::query()->create([
+            'project_id' => ProjectFactory::default()->id,
             'input_tokens' => 500,
             'recorded_on' => today(),
         ]);
@@ -79,13 +82,18 @@ class UsageScreenTest extends TestCase
     public function the_budget_alert_escalates_with_consumption(): void
     {
         UsageBudget::query()->create([
+            'project_id' => ProjectFactory::default()->id,
             'scope' => 'platform',
             'monthly_limit' => '1000.00',
             'warn_at_percent' => 70,
             'critical_at_percent' => 85,
         ]);
 
-        CostUsageRecord::query()->create(['amount' => '900.00', 'recorded_on' => today()]);
+        CostUsageRecord::query()->create([
+            'project_id' => ProjectFactory::default()->id,
+            'amount' => '900.00',
+            'recorded_on' => today(),
+        ]);
 
         $analyst = User::factory()->role(Role::CostAnalyst)->create();
 
@@ -110,7 +118,11 @@ class UsageScreenTest extends TestCase
     #[Test]
     public function comparison_returns_null_when_the_previous_period_was_empty(): void
     {
-        TokenUsageRecord::query()->create(['input_tokens' => 100, 'recorded_on' => today()]);
+        TokenUsageRecord::query()->create([
+            'project_id' => ProjectFactory::default()->id,
+            'input_tokens' => 100,
+            'recorded_on' => today(),
+        ]);
 
         $analyst = User::factory()->role(Role::CostAnalyst)->create();
 
