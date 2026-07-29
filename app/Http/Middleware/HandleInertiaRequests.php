@@ -49,7 +49,9 @@ final class HandleInertiaRequests extends Middleware
                 ] : null,
                 'permissions' => $user instanceof User ? $user->permissionNames($project) : [],
             ],
-            'projects' => [
+            // اسم مخصَّص لا `projects`: أي صفحة تعرض مشاريع ستسمّي حمولتها
+            // `projects`، وحمولة الصفحة تسبق المشتركة فيختفي المبدّل بصمت.
+            'projectSwitcher' => [
                 'current' => $project === null ? null : self::projectPayload($project),
                 'available' => $user instanceof User
                     ? $current->availableTo($user)

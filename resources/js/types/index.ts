@@ -15,6 +15,8 @@ export type Role =
 /** Mirrors App\Domains\Administration\Enums\Permission. */
 export type Permission =
     | 'overview.view'
+    | 'project.view'
+    | 'project.manage'
     | 'conversations.view'
     | 'conversations.view_content'
     | 'conversations.export'
@@ -64,7 +66,8 @@ export interface SharedProps {
         user: AuthUser | null;
         permissions: Permission[];
     };
-    projects: {
+    /** حمولة مبدّل المشاريع — مخصَّصة الاسم لئلا تصطدم بحمولة صفحة المشاريع. */
+    projectSwitcher: {
         current: ProjectSummary | null;
         available: ProjectSummary[];
     };

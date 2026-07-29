@@ -8,8 +8,8 @@ use App\Domains\Assistants\Actions\ProvisionAssistantDefaults;
 use App\Domains\Assistants\Enums\SectionCapability;
 use App\Domains\Assistants\Models\ProjectSection;
 use App\Domains\Projects\Models\Project;
+use App\Support\Text\Slug;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 /**
  * أقسام كل مشروع وسلوك مساعده — وثيقة 06 §12 و§13 و§14.
@@ -76,7 +76,7 @@ class SectionsSeeder extends Seeder
 
             foreach ($sections as $index => $section) {
                 ProjectSection::query()->updateOrCreate(
-                    ['project_id' => $project->id, 'slug' => Str::slug($section['name'])],
+                    ['project_id' => $project->id, 'slug' => Slug::make($section['name'], 'section')],
                     [
                         ...$this->capabilities($section['caps'] ?? []),
                         'name' => $section['name'],

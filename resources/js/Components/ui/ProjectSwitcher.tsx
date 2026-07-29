@@ -11,7 +11,7 @@ import { cn } from '@/lib/cn';
  * مصفّاة أصلًا، فالإخفاء هنا عرضٌ لا حماية.
  */
 export function ProjectSwitcher() {
-    const { projects } = usePage<SharedProps>().props;
+    const { projectSwitcher } = usePage<SharedProps>().props;
     const [open, setOpen] = useState(false);
     const container = useRef<HTMLDivElement>(null);
 
@@ -33,12 +33,12 @@ export function ProjectSwitcher() {
         };
     }, [open]);
 
-    if (projects.current === null) {
+    if (projectSwitcher.current === null) {
         return null;
     }
 
-    const current = projects.current;
-    const only = projects.available.length <= 1;
+    const current = projectSwitcher.current;
+    const only = projectSwitcher.available.length <= 1;
 
     const switchTo = (project: ProjectSummary) => {
         setOpen(false);
@@ -94,7 +94,7 @@ export function ProjectSwitcher() {
                     aria-label="المشاريع المتاحة"
                     className="absolute inset-x-0 top-full z-20 mt-1.5 overflow-hidden rounded-card border border-border-strong bg-surface-raised py-1 shadow-raised"
                 >
-                    {projects.available.map((project) => (
+                    {projectSwitcher.available.map((project) => (
                         <li key={project.id}>
                             <button
                                 type="button"

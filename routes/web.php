@@ -7,6 +7,7 @@ use App\Domains\Assistants\Http\AssistantsController;
 use App\Domains\Assistants\Http\SectionsController;
 use App\Domains\Conversations\Http\ConversationsController;
 use App\Domains\Conversations\Http\EscalationsController;
+use App\Domains\Projects\Http\ProjectsController;
 use App\Domains\Projects\Http\SwitchProjectController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\OverviewController;
@@ -26,6 +27,17 @@ Route::middleware('auth')->group(function (): void {
     // التبديل بلا صلاحية خاصة: العضوية نفسها هي الإذن (ADR-0003 §4).
     Route::post('/projects/{project}/switch', SwitchProjectController::class)
         ->name('projects.switch');
+
+    Route::middleware('permission:project.view')->group(function (): void {
+        Route::get('/projects', [ProjectsController::class, 'index'])->name('projects.index');
+        Route::post('/projects', [ProjectsController::class, 'store'])->name('projects.store');
+        Route::put('/projects/{project}', [ProjectsController::class, 'update'])
+            ->name('projects.update');
+        Route::post('/projects/{project}/members', [ProjectsController::class, 'addMember'])
+            ->name('projects.members.add');
+        Route::delete('/projects/{project}/members/{user}', [ProjectsController::class, 'removeMember'])
+            ->name('projects.members.remove');
+    });
 
     Route::get('/', OverviewController::class)
         ->middleware('permission:overview.view')

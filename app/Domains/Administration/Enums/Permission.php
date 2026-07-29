@@ -16,6 +16,10 @@ enum Permission: string
     // نظرة عامة
     case OverviewView = 'overview.view';
 
+    // المشروع نفسه: إعداده وربطه وعضويته (ADR-0003)
+    case ProjectView = 'project.view';
+    case ProjectManage = 'project.manage';
+
     // الأداء والمحادثات
     case ConversationsView = 'conversations.view';
     case ConversationsViewContent = 'conversations.view_content';

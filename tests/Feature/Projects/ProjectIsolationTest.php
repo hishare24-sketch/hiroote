@@ -194,14 +194,14 @@ class ProjectIsolationTest extends TestCase
             ->get('/')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->has('projects.available', 1)
-                ->where('projects.current.slug', 'hi-share'));
+                ->has('projectSwitcher.available', 1)
+                ->where('projectSwitcher.current.slug', 'hi-share'));
 
         // مدير المنصة عضو ضمنًا في كل مشروع، فيراهما معًا.
         $this->actingAs($this->operator)
             ->get('/')
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('projects.available', 2));
+            ->assertInertia(fn ($page) => $page->has('projectSwitcher.available', 2));
     }
 
     #[Test]

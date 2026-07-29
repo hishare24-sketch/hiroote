@@ -8,7 +8,7 @@ use App\Domains\Administration\Actions\RecordAuditEntry;
 use App\Domains\Administration\DTOs\AuditEntry;
 use App\Domains\Assistants\Models\ProjectSection;
 use App\Domains\Projects\Models\Project;
-use Illuminate\Support\Str;
+use App\Support\Text\Slug;
 
 /**
  * إنشاء قسم أو تعديله — وثيقة 06 §14.
@@ -65,7 +65,7 @@ final readonly class SaveProjectSection
      */
     private function uniqueSlug(Project $project, string $name): string
     {
-        $base = Str::slug($name) !== '' ? Str::slug($name) : 'section';
+        $base = Slug::make($name, 'section');
         $slug = $base;
         $suffix = 2;
 

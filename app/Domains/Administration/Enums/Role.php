@@ -43,6 +43,7 @@ enum Role: string
 
             self::AiManager => [
                 Permission::OverviewView,
+                Permission::ProjectView,
                 Permission::ConversationsView,
                 Permission::ConversationsViewContent,
                 Permission::ConversationsExport,
@@ -103,6 +104,7 @@ enum Role: string
             // مراجعة فقط: يرى كل شيء عدا محتوى المحادثات الخام، ولا يغيّر شيئًا.
             self::SecurityAuditor => [
                 Permission::OverviewView,
+                Permission::ProjectView,
                 Permission::ConversationsView,
                 Permission::UsageView,
                 Permission::ProvidersView,
