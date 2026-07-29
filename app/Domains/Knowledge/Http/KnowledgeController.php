@@ -21,6 +21,7 @@ use App\Domains\Knowledge\Models\KnowledgeItem;
 use App\Domains\Knowledge\Models\KnowledgeScreen;
 use App\Domains\Knowledge\Models\KnowledgeSource;
 use App\Domains\Knowledge\Models\KnowledgeVersion;
+use App\Domains\Knowledge\Services\KnowledgeSearch;
 use App\Domains\Knowledge\Services\SectionKnowledgeReport;
 use App\Domains\Projects\Models\Project;
 use App\Domains\Projects\Services\CurrentProject;
@@ -31,6 +32,7 @@ use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -41,22 +43,29 @@ use RuntimeException;
  */
 class KnowledgeController extends Controller
 {
+    /** سقف نتائج البحث المعروضة — وما فوقه يُعلَن عددًا لا يُبتَر صامتًا. */
+    private const MAX_RESULTS = 30;
+
     public function __construct(
         private readonly CurrentProject $current,
         private readonly SectionKnowledgeReport $report,
+        private readonly KnowledgeSearch $search,
     ) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $project = $this->current->require();
         $report = $this->report->forProject($project);
 
         $sections = ProjectSection::query()->forProject($project)->ordered()->get();
+        $query = trim((string) $request->query('q', ''));
 
         return Inertia::render('Knowledge/Index', [
             'systemStatus' => SystemStatus::current(),
             'project' => ['id' => $project->id, 'name' => $project->name],
             'criteria' => SectionKnowledgeReport::CRITERIA,
+            'query' => $query,
+            'results' => $query === '' ? null : $this->results($project, $query, $sections),
             'sections' => $sections
                 ->map(fn (ProjectSection $section): array => [
                     'id' => $section->id,
@@ -69,6 +78,54 @@ class KnowledgeController extends Controller
                 ->values()
                 ->all(),
         ]);
+    }
+
+    /**
+     * نتائج البحث عبر أقسام المشروع كلها.
+     *
+     * تُعرض المسودات مع المنشور و**تُوسَم**: محرِّرٌ لا يرى مسوّدته يكتبها
+     * ثانيةً؛ ومحرِّرٌ يراها بلا وسم يظنّ المساعد يجيب بها، فيبحث عن سبب
+     * «الجواب الخاطئ» في مكانٍ آخر.
+     *
+     * @param  Collection<int, ProjectSection>  $sections
+     * @return array{total: int, shown: int, items: list<array<string, mixed>>}
+     */
+    private function results(Project $project, string $query, Collection $sections): array
+    {
+        $names = $sections->pluck('name', 'id');
+
+        $base = $this->search->apply(
+            KnowledgeItem::query()->forProject($project),
+            $query,
+        );
+
+        $total = (clone $base)->count();
+
+        $items = (clone $base)
+            // المنشور أولًا: هو ما يجيب به المساعد فعلًا، والمسودة عملٌ لم
+            // يعتمده أحد.
+            ->orderByRaw('case when status = ? then 0 else 1 end', [KnowledgeStatus::Published->value])
+            ->orderByDesc('updated_at')
+            ->limit(self::MAX_RESULTS)
+            ->get();
+
+        return [
+            'total' => $total,
+            'shown' => $items->count(),
+            'items' => array_values($items->map(fn (KnowledgeItem $item): array => [
+                'id' => $item->id,
+                'title' => $item->title,
+                'section_id' => $item->section_id,
+                'section' => $names[$item->section_id] ?? '—',
+                'kind' => EnumPayload::from($item->kind),
+                'status' => EnumPayload::from($item->status),
+                'excerpt' => $this->search->excerpt((string) $item->body, $query),
+                'updated_at' => $item->updated_at->toIso8601String(),
+                // ما يراه المساعد هو المنشور وحده — تُقال هنا كي لا يُبحث عن
+                // سبب «لا أعرف» في المزود وهو في حالة العنصر.
+                'visible_to_assistant' => $item->status === KnowledgeStatus::Published,
+            ])->all()),
+        ];
     }
 
     public function show(ProjectSection $section): Response

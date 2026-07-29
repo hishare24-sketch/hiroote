@@ -1,9 +1,12 @@
-import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, BookOpen, Check, FileWarning, Layers, X } from 'lucide-react';
-import type { StatusTone } from '@/types';
+import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
+import { ArrowLeft, BookOpen, Check, FileWarning, Layers, Search, X } from 'lucide-react';
+import type { StatusTone, Tone } from '@/types';
 import type { SectionKnowledgeRow } from '@/types/knowledge';
 import { AdminLayout } from '@/Layouts/AdminLayout';
 import { Badge } from '@/Components/ui/Badge';
+import { Button } from '@/Components/ui/Button';
+import { Input } from '@/Components/ui/Input';
 import { Card, CardBody, CardHeader } from '@/Components/ui/Card';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { PageHeader } from '@/Components/ui/PageHeader';
@@ -11,11 +14,31 @@ import { StatCard } from '@/Components/ui/StatCard';
 import { formatNumber, formatPercent, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
+interface SearchHit {
+    id: number;
+    title: string;
+    section_id: number | null;
+    section: string;
+    kind: { value: string; label: string; tone: Tone };
+    status: { value: string; label: string; tone: Tone };
+    excerpt: string;
+    updated_at: string;
+    visible_to_assistant: boolean;
+}
+
+interface SearchResults {
+    total: number;
+    shown: number;
+    items: SearchHit[];
+}
+
 interface Props {
     systemStatus: { label: string; tone: StatusTone };
     project: { id: number; name: string };
     criteria: Record<string, string>;
     sections: SectionKnowledgeRow[];
+    query: string;
+    results: SearchResults | null;
 }
 
 const BARS: Record<string, string> = {
@@ -26,7 +49,14 @@ const BARS: Record<string, string> = {
 };
 
 /** شاشة قاعدة المعرفة — وثيقة 06 §15. */
-export default function KnowledgeIndex({ systemStatus, project, criteria, sections }: Props) {
+export default function KnowledgeIndex({
+    systemStatus,
+    project,
+    criteria,
+    sections,
+    query,
+    results,
+}: Props) {
     const total = sections.length;
     const complete = sections.filter((section) => section.completion === 100).length;
     const openNotes = sections.reduce((sum, section) => sum + section.open_notes, 0);
@@ -46,6 +76,8 @@ export default function KnowledgeIndex({ systemStatus, project, criteria, sectio
                 description={`ما يعرفه المساعد عن كل قسم في ${project.name}`}
                 systemStatus={systemStatus}
             />
+
+            <SearchCard query={query} results={results} />
 
             <section aria-label="ملخص التغطية" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <StatCard
@@ -190,5 +222,120 @@ function Fact({ label, value, danger }: { label: string; value: number; danger?:
                 {formatNumber(value)}
             </dd>
         </span>
+    );
+}
+
+/**
+ * بحثٌ عبر أقسام المشروع كلها — بقاعدة المطابقة نفسها التي يختار بها المساعد.
+ *
+ * بحثٌ يخالف قاعدة المساعد يجعل المحرِّر يجد العنصر في الشاشة ويسمع أن المساعد
+ * لا يعرفه، فيبحث عن العطل في المعرفة وهو في اختلاف القاعدتين.
+ */
+function SearchCard({ query, results }: { query: string; results: SearchResults | null }) {
+    const [term, setTerm] = useState(query);
+
+    const submit = (value: string): void => {
+        router.get('/knowledge', value === '' ? {} : { q: value }, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    };
+
+    return (
+        <Card>
+            <CardHeader
+                title="ابحث في المعرفة"
+                description="عبر كل الأقسام — والمطابقة نصّية لا دلالية: «سحب» لا تطابق «صرف»"
+            />
+            <CardBody>
+                <form
+                    className="flex flex-wrap items-end gap-3"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        submit(term.trim());
+                    }}
+                >
+                    <div className="min-w-64 flex-1">
+                        <Input
+                            label="كلمات البحث"
+                            value={term}
+                            placeholder="مثال: حدّ التحويل"
+                            onChange={(event) => {
+                                setTerm(event.target.value);
+                            }}
+                        />
+                    </div>
+                    <Button type="submit">
+                        <Search aria-hidden className="size-4" />
+                        ابحث
+                    </Button>
+                    {query === '' ? null : (
+                        <Button
+                            variant="ghost"
+                            type="button"
+                            onClick={() => {
+                                setTerm('');
+                                submit('');
+                            }}
+                        >
+                            امسح
+                        </Button>
+                    )}
+                </form>
+
+                {results === null ? null : <SearchResultList query={query} results={results} />}
+            </CardBody>
+        </Card>
+    );
+}
+
+function SearchResultList({ query, results }: { query: string; results: SearchResults }) {
+    if (results.total === 0) {
+        return (
+            <p className="mt-4 text-body text-fg-muted">
+                لا عنصر يطابق «{query}». والمطابقة نصّية: جرّب كلمة أخرى من نصّ العنصر نفسه.
+            </p>
+        );
+    }
+
+    return (
+        <div className="mt-4 flex flex-col gap-3">
+            <p className="text-caption text-fg-subtle">
+                {results.shown === results.total
+                    ? `${formatNumber(results.total)} نتيجة`
+                    : `تُعرض ${formatNumber(results.shown)} من ${formatNumber(results.total)} نتيجة — ضيّق البحث لترى الباقي`}
+            </p>
+
+            <ul className="flex flex-col gap-2">
+                {results.items.map((hit) => (
+                    <li key={hit.id}>
+                        <Link
+                            href={`/knowledge/sections/${String(hit.section_id ?? '')}`}
+                            className="block rounded-control border border-border-default p-3 transition-colors hover:bg-surface-sunken"
+                        >
+                            <span className="flex flex-wrap items-center gap-2">
+                                <span className="text-body font-medium text-fg-default">
+                                    {hit.title}
+                                </span>
+                                <Badge tone={hit.status.tone}>{hit.status.label}</Badge>
+                                <Badge tone="neutral">{hit.kind.label}</Badge>
+                                {hit.visible_to_assistant ? null : (
+                                    <span className="text-micro text-warning">
+                                        لا يراها المساعد
+                                    </span>
+                                )}
+                            </span>
+
+                            <p className="mt-1 text-caption text-fg-muted">{hit.excerpt}</p>
+
+                            <p className="mt-1 text-micro text-fg-subtle">
+                                {hit.section} · حُدّث {formatRelative(hit.updated_at)}
+                            </p>
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        </div>
     );
 }
