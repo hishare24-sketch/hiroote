@@ -74,26 +74,28 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                             'flex items-center gap-2 rounded-control px-3 py-2.5 text-sm transition-colors',
                             active
                                 ? 'bg-accent-soft font-bold text-accent'
-                                : 'text-fg-strong hover:bg-surface-sunken',
+                                : item.planned === true
+                                  ? 'text-fg-subtle hover:bg-surface-sunken hover:text-fg-strong'
+                                  : 'text-fg-strong hover:bg-surface-sunken',
                         )}
                     >
                         <span
                             aria-hidden
                             className={cn(
                                 'size-2 shrink-0 rounded-full',
-                                active ? 'bg-accent' : 'bg-border-strong',
+                                active
+                                    ? 'bg-accent'
+                                    : item.planned === true
+                                      ? 'bg-border-default'
+                                      : 'bg-border-strong',
                             )}
                         />
-                        <span className="min-w-0 flex-1 leading-snug">{item.label}</span>
-                        {item.planned === true ? (
-                            <>
-                                <span className="sr-only">— قريبًا</span>
-                                <span
-                                    aria-hidden
-                                    className="size-1.5 shrink-0 rounded-full bg-fg-subtle/40"
-                                />
-                            </>
-                        ) : null}
+                        <span className="min-w-0 flex-1 leading-snug">
+                            {item.label}
+                            {item.planned === true ? (
+                                <span className="sr-only"> — قريبًا</span>
+                            ) : null}
+                        </span>
                     </Link>
                 );
             })}

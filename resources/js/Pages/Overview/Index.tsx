@@ -1,95 +1,195 @@
 import { Head, Link, router } from '@inertiajs/react';
+import type { LucideIcon } from 'lucide-react';
 import {
-    ArrowLeftRight,
+    ArrowLeft,
+    Check,
     CircleGauge,
-    Coins,
-    MessagesSquare,
+    KeyRound,
     ScrollText,
     Server,
-    Timer,
+    ShieldCheck,
 } from 'lucide-react';
 import { AdminLayout } from '@/Layouts/AdminLayout';
 import { Badge } from '@/Components/ui/Badge';
 import { Card, CardBody, CardHeader } from '@/Components/ui/Card';
-import { EmptyState } from '@/Components/ui/EmptyState';
 import { PageHeader } from '@/Components/ui/PageHeader';
 import { StatCard } from '@/Components/ui/StatCard';
 import { Toggle } from '@/Components/ui/Toggle';
 import { usePermissions } from '@/Hooks/usePermissions';
 import type { StatusTone } from '@/types';
 
-interface Metric {
+type Tone = StatusTone | 'accent';
+
+interface Stat {
+    key: string;
+    label: string;
     value: string;
     caption: string;
+    tone: Tone;
     progress?: number;
+}
+
+interface SetupStep {
+    title: string;
+    detail: string;
+    done: boolean;
+    href: string | null;
+    cta: string | null;
+}
+
+interface ProviderRow {
+    id: number;
+    name: string;
+    model: string | null;
+    is_active: boolean;
+    is_enabled: boolean;
+    status: 'operational' | 'degraded' | 'down' | 'unknown';
+    status_label: string;
+    has_key: boolean;
+    latency_ms: number | null;
+    balance: number;
+    currency: string;
+}
+
+interface ActivityRow {
+    id: number;
+    action: string;
+    category: string;
+    tone: string;
+    actor: string;
+    created_at: string;
 }
 
 interface OverviewProps {
     systemStatus: { label: string; tone: StatusTone };
-    metrics: {
-        tokens: Metric | null;
-        conversations: Metric | null;
-        avgDuration: Metric | null;
-        autoResolutionRate: Metric | null;
-    };
-    escalations: { label: string; count: number; share: string; tone: StatusTone }[] | null;
-    providers: {
-        id: number;
-        name: string;
-        model: string | null;
-        is_active: boolean;
-        priority: number;
-        status: string;
-    }[];
+    stats: Stat[];
+    setupSteps: SetupStep[];
+    providers: ProviderRow[];
     quickControls: { key: string; label: string; enabled: boolean }[];
-    attentionAlerts: { title: string; detail: string; tone: StatusTone; href: string }[];
-    recentActivity: { id: number; action: string; actor: string; created_at: string }[];
+    recentActivity: ActivityRow[];
 }
 
-const ALERT_TONES: Record<StatusTone, string> = {
-    success: 'bg-success-soft',
-    warning: 'bg-warning-soft',
-    danger: 'bg-danger-soft',
-    info: 'bg-info-soft',
-    neutral: 'bg-neutral-soft',
+const STAT_ICONS: Record<string, LucideIcon> = {
+    providers: Server,
+    keys: KeyRound,
+    health: CircleGauge,
+    audit: ScrollText,
 };
 
-const ALERT_DOTS: Record<StatusTone, string> = {
-    success: 'bg-success',
-    warning: 'bg-warning',
-    danger: 'bg-danger',
-    info: 'bg-info',
-    neutral: 'bg-neutral',
+const STATUS_TONES: Record<ProviderRow['status'], StatusTone> = {
+    operational: 'success',
+    degraded: 'warning',
+    down: 'danger',
+    unknown: 'neutral',
 };
 
-function queueLabel(index: number): { text: string; tone: StatusTone } {
-    if (index === 0) {
-        return { text: 'نشط', tone: 'success' };
-    }
-    return { text: `احتياطي ${String(index)}`, tone: index === 1 ? 'info' : 'warning' };
+const CATEGORY_TONES: Record<string, string> = {
+    accent: 'bg-accent-soft text-accent',
+    success: 'bg-success-soft text-success',
+    warning: 'bg-warning-soft text-warning',
+    danger: 'bg-danger-soft text-danger',
+    info: 'bg-info-soft text-info',
+    neutral: 'bg-neutral-soft text-neutral',
+};
+
+function categoryClass(tone: string): string {
+    return CATEGORY_TONES[tone] ?? 'bg-neutral-soft text-neutral';
 }
 
-/** بطاقة مؤشر لم يُوصَل مصدرها بعد — تقول ذلك صراحةً بدل عرض صفر مضلل. */
-function PendingMetric({ label }: { label: string }) {
+function formatTime(value: string): string {
+    return new Date(value).toLocaleString('ar', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+/** لوحة خطوات التشغيل — تختفي كليًا عند اكتمال ما يمكن إنجازه الآن. */
+function SetupPanel({ steps }: { steps: SetupStep[] }) {
+    const actionable = steps.filter((step) => step.href !== null);
+    const done = actionable.filter((step) => step.done).length;
+    const percent = actionable.length === 0 ? 100 : (done / actionable.length) * 100;
+
     return (
-        <div className="flex flex-col justify-between gap-3 rounded-card border border-dashed border-border-strong bg-surface-raised p-5">
-            <p className="text-sm text-fg-muted">{label}</p>
-            <p className="text-sm text-fg-subtle">بانتظار محرك القياس — المرحلة 2</p>
-        </div>
+        <Card>
+            <CardHeader
+                title="خطوات التشغيل"
+                description={`${String(done)} من ${String(actionable.length)} خطوة مكتملة — أكملها ليبدأ المساعد في استقبال الطلبات.`}
+                actions={
+                    <div className="flex items-center gap-3">
+                        <div className="h-1.5 w-24 overflow-hidden rounded-pill bg-surface-track">
+                            <div
+                                className="h-full rounded-pill bg-accent transition-[width]"
+                                style={{ width: `${String(percent)}%` }}
+                            />
+                        </div>
+                        <span className="text-sm font-bold text-fg-default">
+                            {Math.round(percent)}%
+                        </span>
+                    </div>
+                }
+            />
+            <CardBody className="p-0">
+                <ol>
+                    {steps.map((step, index) => (
+                        <li
+                            key={step.title}
+                            className="flex flex-wrap items-center gap-4 border-b border-border-default px-6 py-4 last:border-0"
+                        >
+                            <span
+                                aria-hidden
+                                className={
+                                    step.done
+                                        ? 'flex size-8 shrink-0 items-center justify-center rounded-full bg-success text-white'
+                                        : 'flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-border-strong text-sm font-bold text-fg-subtle'
+                                }
+                            >
+                                {step.done ? <Check className="size-4" /> : index + 1}
+                            </span>
+
+                            <span className="min-w-0 flex-1">
+                                <span
+                                    className={
+                                        step.done
+                                            ? 'block text-sm font-medium text-fg-muted line-through'
+                                            : 'block text-sm font-bold text-fg-default'
+                                    }
+                                >
+                                    {step.title}
+                                </span>
+                                <span className="mt-0.5 block text-xs text-fg-muted">
+                                    {step.detail}
+                                </span>
+                            </span>
+
+                            {step.done ? (
+                                <Badge tone="success">تم</Badge>
+                            ) : step.href !== null && step.cta !== null ? (
+                                <Link
+                                    href={step.href}
+                                    className="inline-flex shrink-0 items-center gap-1.5 rounded-control bg-accent px-4 py-2 text-xs font-bold text-white hover:brightness-110"
+                                >
+                                    {step.cta}
+                                    <ArrowLeft aria-hidden className="size-3.5" />
+                                </Link>
+                            ) : (
+                                <Badge tone="neutral">لاحقًا</Badge>
+                            )}
+                        </li>
+                    ))}
+                </ol>
+            </CardBody>
+        </Card>
     );
 }
 
 export default function Index({
     systemStatus,
-    metrics,
-    escalations,
+    stats,
+    setupSteps,
     providers,
     quickControls,
-    attentionAlerts,
     recentActivity,
 }: OverviewProps) {
     const { can } = usePermissions();
     const canToggle = can('maintenance.toggle');
+    const setupIncomplete = setupSteps.some((step) => step.href !== null && !step.done);
 
     return (
         <AdminLayout>
@@ -102,164 +202,92 @@ export default function Index({
                 period="آخر 7 أيام"
             />
 
-            {/* البطاقات الإحصائية العليا */}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {metrics.tokens === null ? (
-                    <PendingMetric label="استهلاك التوكن الشهري" />
-                ) : (
+                {stats.map((stat) => (
                     <StatCard
-                        label="استهلاك التوكن الشهري"
-                        value={metrics.tokens.value}
-                        caption={metrics.tokens.caption}
-                        progress={metrics.tokens.progress}
-                        icon={Coins}
-                        tone="accent"
+                        key={stat.key}
+                        label={stat.label}
+                        value={stat.value}
+                        caption={stat.caption}
+                        progress={stat.progress}
+                        tone={stat.tone}
+                        icon={STAT_ICONS[stat.key] ?? Server}
                     />
-                )}
-
-                {metrics.conversations === null ? (
-                    <PendingMetric label="إجمالي المحادثات" />
-                ) : (
-                    <StatCard
-                        label="إجمالي المحادثات"
-                        value={metrics.conversations.value}
-                        caption={metrics.conversations.caption}
-                        progress={metrics.conversations.progress}
-                        icon={MessagesSquare}
-                        tone="warning"
-                    />
-                )}
-
-                {metrics.avgDuration === null ? (
-                    <PendingMetric label="متوسط مدة المحادثة" />
-                ) : (
-                    <StatCard
-                        label="متوسط مدة المحادثة"
-                        value={metrics.avgDuration.value}
-                        caption={metrics.avgDuration.caption}
-                        progress={metrics.avgDuration.progress}
-                        icon={Timer}
-                        tone="info"
-                    />
-                )}
-
-                {metrics.autoResolutionRate === null ? (
-                    <PendingMetric label="نسبة الحل التلقائي" />
-                ) : (
-                    <StatCard
-                        label="نسبة الحل التلقائي"
-                        value={metrics.autoResolutionRate.value}
-                        caption={metrics.autoResolutionRate.caption}
-                        progress={metrics.autoResolutionRate.progress}
-                        icon={CircleGauge}
-                        tone="success"
-                    />
-                )}
+                ))}
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-                {/* رسم استهلاك التوكن */}
-                <Card className="lg:col-span-2">
-                    <CardHeader
-                        title="حجم ومعدل استهلاك التوكن"
-                        description="مقارنة بالفترة السابقة"
-                    />
-                    <CardBody>
-                        <EmptyState
-                            icon={Coins}
-                            title="لا توجد قراءات بعد"
-                            description="يبدأ الرسم بالتعبئة فور تسجيل أول محادثة عبر الـ Orchestrator في المرحلة الثانية."
-                        />
-                    </CardBody>
-                </Card>
+            {setupIncomplete ? <SetupPanel steps={setupSteps} /> : null}
 
-                {/* التحويل والتصعيد */}
-                <Card>
-                    <CardHeader title="التحويل والتصعيد" />
-                    <CardBody className="p-0">
-                        {escalations === null || escalations.length === 0 ? (
-                            <EmptyState
-                                icon={ArrowLeftRight}
-                                title="لا توجد تحويلات"
-                                description="ستظهر أنواع التحويل ونسبها هنا."
-                            />
-                        ) : (
-                            <ul>
-                                {escalations.map((row) => (
-                                    <li
-                                        key={row.label}
-                                        className="flex items-center justify-between gap-3 border-b border-border-default px-6 py-3.5 last:border-0"
-                                    >
-                                        <span className="flex items-center gap-2 text-sm font-bold text-fg-strong">
-                                            <span
-                                                aria-hidden
-                                                className={`size-2.5 rounded-full ${ALERT_DOTS[row.tone]}`}
-                                            />
-                                            {row.label}
-                                        </span>
-                                        <span className="flex items-center gap-4">
-                                            <span className="text-sm font-bold text-fg-default">
-                                                {row.count.toLocaleString('ar')}
-                                            </span>
-                                            <span className="text-xs text-fg-muted">
-                                                {row.share}
-                                            </span>
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </CardBody>
-                </Card>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-5">
                 {/* المزودون وحالة الطابور */}
-                <Card>
+                <Card className="lg:col-span-3">
                     <CardHeader
                         title="المزودون وحالة الطابور"
+                        description="الترتيب يحدد من يستلم الطلبات عند تعطل السابق."
                         actions={
                             <Link
                                 href="/providers"
-                                className="text-xs font-medium text-accent hover:underline"
+                                className="text-xs font-bold text-accent hover:underline"
                             >
                                 إدارة
                             </Link>
                         }
                     />
-                    <CardBody className="space-y-2">
-                        {providers.length === 0 ? (
-                            <EmptyState
-                                icon={Server}
-                                title="لا يوجد مزودون مفعلون"
-                                description="فعّل مزودًا واحدًا على الأقل ليبدأ التشغيل."
-                            />
-                        ) : (
-                            providers.map((provider, index) => {
-                                const queue = queueLabel(index);
-                                return (
-                                    <div
-                                        key={provider.id}
-                                        className="flex items-center justify-between gap-3 rounded-control border border-border-default bg-surface-sunken px-4 py-2.5"
+                    <CardBody className="p-0">
+                        <ul>
+                            {providers.map((provider, index) => (
+                                <li
+                                    key={provider.id}
+                                    className="flex flex-wrap items-center gap-3 border-b border-border-default px-6 py-3.5 last:border-0"
+                                >
+                                    <span
+                                        aria-hidden
+                                        className="flex size-7 shrink-0 items-center justify-center rounded-control bg-surface-track text-xs font-bold text-fg-muted"
                                     >
-                                        <Badge tone={queue.tone}>{queue.text}</Badge>
-                                        <span className="flex min-w-0 flex-1 items-center justify-end gap-4">
-                                            <span className="truncate text-xs text-fg-muted">
-                                                {provider.model ?? '—'}
-                                            </span>
+                                        {index + 1}
+                                    </span>
+
+                                    <span className="min-w-0 flex-1">
+                                        <span className="flex items-center gap-2">
                                             <span className="text-[15px] font-bold text-fg-default">
                                                 {provider.name}
                                             </span>
+                                            {provider.is_active ? (
+                                                <Badge tone="success" dot>
+                                                    نشط
+                                                </Badge>
+                                            ) : null}
+                                            {!provider.is_enabled ? (
+                                                <Badge tone="neutral">معطل</Badge>
+                                            ) : null}
                                         </span>
-                                    </div>
-                                );
-                            })
-                        )}
+                                        <span className="mt-0.5 block text-xs text-fg-muted">
+                                            {provider.model ?? 'بلا نموذج افتراضي'} ·{' '}
+                                            {provider.balance.toLocaleString('ar', {
+                                                maximumFractionDigits: 0,
+                                            })}{' '}
+                                            {provider.currency}
+                                        </span>
+                                    </span>
+
+                                    <span className="flex shrink-0 items-center gap-2">
+                                        {provider.has_key ? (
+                                            <Badge tone="success">مفتاح فعال</Badge>
+                                        ) : (
+                                            <Badge tone="danger">بلا مفتاح</Badge>
+                                        )}
+                                        <Badge tone={STATUS_TONES[provider.status]} dot>
+                                            {provider.status_label}
+                                        </Badge>
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
                     </CardBody>
                 </Card>
 
                 {/* مفاتيح التحكم السريعة */}
-                <Card>
+                <Card className="lg:col-span-2">
                     <CardHeader
                         title="مفاتيح التحكم السريعة"
                         description={
@@ -286,90 +314,62 @@ export default function Index({
                 </Card>
             </div>
 
-            {/* تنبيهات تحتاج إجراء */}
+            {/* آخر النشاط */}
             <Card>
-                <CardHeader title="تنبيهات تحتاج إجراء" />
-                <CardBody>
-                    {attentionAlerts.length === 0 ? (
-                        <EmptyState
-                            title="لا شيء يحتاج إجراء"
-                            description="كل المزودين مفعّلون وبمفاتيح سارية، ولا تنبيهات ميزانية."
-                        />
+                <CardHeader
+                    title="آخر النشاط"
+                    description="كل تغيير حساس يُسجَّل في سجل غير قابل للتعديل."
+                    actions={
+                        <Link
+                            href="/audit"
+                            className="text-xs font-bold text-accent hover:underline"
+                        >
+                            السجل الكامل
+                        </Link>
+                    }
+                />
+                <CardBody className="p-0">
+                    {recentActivity.length === 0 ? (
+                        <p className="px-6 py-8 text-center text-sm text-fg-muted">
+                            لا يوجد نشاط مسجل بعد.
+                        </p>
                     ) : (
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            {attentionAlerts.map((alert) => (
-                                <Link
-                                    key={alert.title}
-                                    href={alert.href}
-                                    className={`flex items-start gap-2.5 rounded-control px-4 py-3 transition-opacity hover:opacity-80 ${ALERT_TONES[alert.tone]}`}
-                                >
-                                    <span
-                                        aria-hidden
-                                        className={`mt-1.5 size-2.5 shrink-0 rounded-full ${ALERT_DOTS[alert.tone]}`}
-                                    />
-                                    <span className="min-w-0">
-                                        <span className="block text-[13px] font-bold text-fg-strong">
-                                            {alert.title}
-                                        </span>
-                                        <span className="mt-0.5 block text-xs text-fg-muted">
-                                            {alert.detail}
-                                        </span>
-                                    </span>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </CardBody>
-            </Card>
-
-            {/* آخر النشاط — إضافة على الفيجما: يربط النظرة العامة بسجل التدقيق */}
-            {recentActivity.length > 0 ? (
-                <Card>
-                    <CardHeader
-                        title="آخر النشاط"
-                        actions={
-                            <Link
-                                href="/audit"
-                                className="text-xs font-medium text-accent hover:underline"
-                            >
-                                السجل الكامل
-                            </Link>
-                        }
-                    />
-                    <CardBody className="p-0">
                         <ul>
                             {recentActivity.map((entry) => (
                                 <li
                                     key={entry.id}
-                                    className="flex items-center justify-between gap-3 border-b border-border-default px-6 py-3 last:border-0"
+                                    className="flex flex-wrap items-center gap-3 border-b border-border-default px-6 py-3 last:border-0"
                                 >
-                                    <span className="flex items-center gap-2">
-                                        <ScrollText
-                                            aria-hidden
-                                            className="size-4 shrink-0 text-fg-subtle"
-                                        />
-                                        <span
-                                            className="font-mono text-xs text-fg-default"
-                                            dir="ltr"
-                                        >
-                                            {entry.action}
-                                        </span>
+                                    <span
+                                        className={`shrink-0 rounded-pill px-2.5 py-1 text-xs font-bold ${categoryClass(entry.tone)}`}
+                                    >
+                                        {entry.category}
                                     </span>
-                                    <span className="flex items-center gap-4 text-xs text-fg-muted">
-                                        <span>{entry.actor}</span>
-                                        <span>
-                                            {new Date(entry.created_at).toLocaleString('ar', {
-                                                dateStyle: 'short',
-                                                timeStyle: 'short',
-                                            })}
-                                        </span>
+                                    <span
+                                        className="min-w-0 flex-1 truncate font-mono text-xs text-fg-default"
+                                        dir="ltr"
+                                    >
+                                        {entry.action}
+                                    </span>
+                                    <span className="shrink-0 text-xs text-fg-muted">
+                                        {entry.actor}
+                                    </span>
+                                    <span className="shrink-0 text-xs text-fg-muted">
+                                        {formatTime(entry.created_at)}
                                     </span>
                                 </li>
                             ))}
                         </ul>
-                    </CardBody>
-                </Card>
-            ) : null}
+                    )}
+                </CardBody>
+            </Card>
+
+            {/* ما يصل مع المرحلة الثانية — سطر واحد بدل بطاقات مجوّفة */}
+            <p className="flex items-center justify-center gap-2 pb-2 text-center text-xs text-fg-muted">
+                <ShieldCheck aria-hidden className="size-4 shrink-0" />
+                مؤشرات التوكن والتكلفة والمحادثات تظهر هنا فور ربط محرك المحادثات في المرحلة
+                الثانية.
+            </p>
         </AdminLayout>
     );
 }

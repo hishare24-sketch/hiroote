@@ -51,8 +51,8 @@
         /* النصوص */
         --color-fg-default: #101828;
         --color-fg-strong: #1d2939;
-        --color-fg-muted: #667085;
-        --color-fg-subtle: #98a2b3;
+        --color-fg-muted: #475467;
+        --color-fg-subtle: #667085;
         --color-fg-inverted: #ffffff;
 
         /* الحدود */
@@ -85,8 +85,8 @@
 
         --color-fg-default: #f2f4f7;
         --color-fg-strong: #e4e7ec;
-        --color-fg-muted: #98a2b3;
-        --color-fg-subtle: #77839a;
+        --color-fg-muted: #b6bfcc;
+        --color-fg-subtle: #98a2b3;
         --color-fg-inverted: #101828;
 
         --color-border-default: #262b38;
