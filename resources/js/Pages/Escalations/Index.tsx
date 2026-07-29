@@ -168,11 +168,11 @@ export default function EscalationsIndex({
                                 </dl>
 
                                 {path.open_count > 0 ? (
-                                    <p className="rounded-control bg-warning-soft px-3 py-1.5 text-micro font-bold text-warning">
+                                    <p className="rounded-control bg-warning-soft px-3 py-1.5 text-caption font-bold text-warning">
                                         {formatNumber(path.open_count)} ما زالت مفتوحة
                                     </p>
                                 ) : (
-                                    <p className="rounded-control bg-success-soft px-3 py-1.5 text-micro font-bold text-success">
+                                    <p className="rounded-control bg-success-soft px-3 py-1.5 text-caption font-bold text-success">
                                         لا حالات مفتوحة في هذا المسار
                                     </p>
                                 )}

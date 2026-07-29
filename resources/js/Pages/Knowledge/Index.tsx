@@ -121,7 +121,7 @@ export default function KnowledgeIndex({ systemStatus, project, criteria, sectio
                                 </div>
 
                                 <div className="flex flex-col gap-1.5">
-                                    <div className="flex items-baseline justify-between gap-2 text-micro">
+                                    <div className="flex items-baseline justify-between gap-2 text-caption">
                                         <span className="text-fg-subtle">نسبة الاكتمال</span>
                                         <span className="font-bold text-fg-default tabular-nums">
                                             {formatPercent(section.completion)}
@@ -138,7 +138,7 @@ export default function KnowledgeIndex({ systemStatus, project, criteria, sectio
                                     </div>
                                 </div>
 
-                                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-micro">
+                                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-caption">
                                     {Object.entries(criteria).map(([key, label]) => (
                                         <li
                                             key={key}
@@ -159,7 +159,7 @@ export default function KnowledgeIndex({ systemStatus, project, criteria, sectio
                                     ))}
                                 </ul>
 
-                                <dl className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border-default pt-2.5 text-micro text-fg-muted tabular-nums">
+                                <dl className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border-default pt-2.5 text-caption text-fg-muted tabular-nums">
                                     <Fact label="عناصر" value={section.items} />
                                     <Fact label="منشور" value={section.published} />
                                     <Fact label="شاشات" value={section.screens} />

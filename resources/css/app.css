@@ -42,15 +42,19 @@
     --radius-badge: 20px;
     --radius-pill: 999px;
 
-    /* مقياس الخط — موازين: fs-xs 11.5 · fs-sm 13.5 · fs-md 14 ·
-     * mk-lg 16.5 · mk-title 19.5 · mk-hero 24 */
-    --text-micro: calc(11.5px * var(--fs-scale));
+    /* مقياس الخط.
+     *
+     * الدرجات الأربع الصغرى أكبر بنقطة من مقياس موازين اللاتيني: الحرف العربي
+     * يحتاج قياسًا أكبر ليبلغ وضوح اللاتيني نفسه — لا صعود ولا نزول يفصل
+     * الكلمات، فيقع عبء التمييز كلّه على حجم الجسم. الدرجتان العليا (الأرقام
+     * الكبيرة في البطاقات) على حالهما لأنهما مقروءتان أصلًا. */
+    --text-micro: calc(12.5px * var(--fs-scale));
     --text-micro--line-height: 1.4;
-    --text-caption: calc(13.5px * var(--fs-scale));
+    --text-caption: calc(14.5px * var(--fs-scale));
     --text-caption--line-height: 1.6;
-    --text-body: calc(14px * var(--fs-scale));
+    --text-body: calc(15px * var(--fs-scale));
     --text-body--line-height: 1.6;
-    --text-title: calc(16.5px * var(--fs-scale));
+    --text-title: calc(17.5px * var(--fs-scale));
     --text-title--line-height: 1.4;
     --text-display: calc(19.5px * var(--fs-scale));
     --text-display--line-height: 1.3;

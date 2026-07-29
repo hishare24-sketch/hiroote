@@ -115,7 +115,7 @@ export default function ProjectsIndex({
                                         </p>
                                         <p
                                             dir="ltr"
-                                            className="mt-1 truncate text-start text-micro text-fg-subtle"
+                                            className="mt-1 truncate text-start text-caption text-fg-subtle"
                                         >
                                             {project.api_base_url ?? '— لم يُربط بـ API بعد'}
                                         </p>
@@ -389,7 +389,7 @@ function SettingsDialog({ project, onClose }: { project: ProjectRow; onClose: ()
                 <div className="flex items-center justify-between gap-4 rounded-control border border-border-default px-3 py-2.5">
                     <span className="min-w-0">
                         <span className="block text-body text-fg-default">مشروع مفعّل</span>
-                        <span className="block text-micro text-fg-subtle">
+                        <span className="block text-caption text-fg-subtle">
                             إيقافه يخفيه من المبدّل ويحتفظ ببياناته كاملة.
                         </span>
                     </span>
@@ -462,7 +462,7 @@ function MembersDialog({
                                 </span>
                                 <span
                                     dir="ltr"
-                                    className="block truncate text-start text-micro text-fg-subtle"
+                                    className="block truncate text-start text-caption text-fg-subtle"
                                 >
                                     {member.email}
                                 </span>
@@ -536,7 +536,7 @@ function MembersDialog({
                         }}
                     />
 
-                    <p className="text-micro text-fg-subtle">
+                    <p className="text-caption text-fg-subtle">
                         الدور يخص هذا المشروع وحده؛ الشخص نفسه قد يحمل دورًا آخر في مشروع آخر.
                     </p>
 

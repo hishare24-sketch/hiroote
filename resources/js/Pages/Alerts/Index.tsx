@@ -319,10 +319,10 @@ function RuleCard({
                 <span className="text-caption text-fg-subtle tabular-nums">
                     الحد {rule.comparison.label} {formatMetric(rule.threshold, rule.unit)}
                 </span>
-                <span className="ms-auto text-micro text-fg-subtle">{rule.current_sample}</span>
+                <span className="ms-auto text-caption text-fg-subtle">{rule.current_sample}</span>
             </div>
 
-            <dl className="flex flex-wrap gap-x-4 gap-y-1 text-micro text-fg-muted">
+            <dl className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-fg-muted">
                 <Fact label="الفترة" value={formatWindow(rule.window_minutes)} />
                 <Fact
                     label="التهدئة"
@@ -351,7 +351,7 @@ function RuleCard({
 
             <div className="flex flex-wrap items-center gap-1.5 border-t border-border-default pt-2.5">
                 {rule.recipients.length === 0 ? (
-                    <span className="text-micro text-warning">بلا مستلمين — لن يعلم أحد</span>
+                    <span className="text-caption text-warning">بلا مستلمين — لن يعلم أحد</span>
                 ) : (
                     rule.recipients.map((recipient, index) => (
                         <Badge
@@ -435,7 +435,7 @@ function EventCard({ event, manage }: { event: AlertEventRow; manage: boolean })
                 ) : null}
             </div>
 
-            <dl className="flex flex-wrap gap-x-4 gap-y-1 text-micro text-fg-subtle">
+            <dl className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-fg-subtle">
                 <Fact label="بدأ" value={formatDateTime(event.triggered_at)} />
                 {event.resolved_at === null ? null : (
                     <Fact label="عاد للطبيعي" value={formatRelative(event.resolved_at)} />

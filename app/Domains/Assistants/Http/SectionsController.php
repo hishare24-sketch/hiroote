@@ -18,8 +18,11 @@ use App\Domains\Providers\Models\AiModel;
 use App\Http\Controllers\Controller;
 use App\Support\Enums\EnumPayload;
 use App\Support\Http\SystemStatus;
+use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Unique;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -101,10 +104,12 @@ class SectionsController extends Controller
 
     public function store(Request $request, SaveProjectSection $action): RedirectResponse
     {
-        $action->handle($this->current->require(), $request->validate([
-            'name' => ['required', 'string', 'max:80'],
+        $project = $this->current->require();
+
+        $action->handle($project, $request->validate([
+            'name' => ['required', 'string', 'max:80', $this->uniqueName($project)],
             'description' => ['nullable', 'string', 'max:300'],
-        ]));
+        ], ['name.unique' => 'يوجد قسم بهذا الاسم في هذا المشروع.']));
 
         return back()->with('success', 'أُضيف القسم.');
     }
@@ -113,13 +118,15 @@ class SectionsController extends Controller
     {
         $this->authorizeSection($section);
 
-        $action->handle($this->current->require(), $request->validate([
-            'name' => ['required', 'string', 'max:80'],
+        $project = $this->current->require();
+
+        $action->handle($project, $request->validate([
+            'name' => ['required', 'string', 'max:80', $this->uniqueName($project, $section)],
             'description' => ['nullable', 'string', 'max:300'],
             'level' => ['nullable', 'string', 'in:direct,balanced,proactive,expert'],
             'model_id' => ['nullable', 'integer', 'exists:ai_models,id'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
-        ]), $section);
+        ], ['name.unique' => 'يوجد قسم بهذا الاسم في هذا المشروع.']), $section);
 
         return back()->with('success', 'حُفظ القسم.');
     }
@@ -153,6 +160,20 @@ class SectionsController extends Controller
     private function authorizeSection(ProjectSection $section): void
     {
         abort_unless($section->project_id === $this->current->require()->id, 404);
+    }
+
+    /**
+     * اسم القسم فريد داخل مشروعه.
+     *
+     * التفرّد على مستوى المشروع لا المنصة: «المحفظة» قد توجد في أكثر من مشروع.
+     * ومنعه هنا برسالة عربية لا بخطأ قاعدة بيانات: الفهرس الفريد يحمي البيانات،
+     * والرسالة تشرح للمشغّل ما فعله.
+     */
+    private function uniqueName(Project $project, ?ProjectSection $section = null): Unique
+    {
+        return Rule::unique('project_sections', 'name')
+            ->where(fn (Builder $query) => $query->where('project_id', $project->id))
+            ->ignore($section?->id);
     }
 
     /** @return array<string, bool> */

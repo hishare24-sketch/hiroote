@@ -197,7 +197,7 @@ function Row({ label, value }: { label: string; value: string }) {
 function Meter({ label, value, max }: { label: string; value: number; max: number }) {
     return (
         <div className="flex flex-col gap-1">
-            <div className="flex items-baseline justify-between gap-2 text-micro">
+            <div className="flex items-baseline justify-between gap-2 text-caption">
                 <span className="text-fg-subtle">{label}</span>
                 <span className="font-bold text-fg-muted tabular-nums">
                     {max === 100
@@ -257,14 +257,14 @@ function FunctionRow({
                 <p className="mt-0.5 text-caption text-fg-muted">{fn.description}</p>
 
                 {fn.awaits_implementation ? (
-                    <p className="mt-1 flex items-center gap-1.5 text-micro text-fg-subtle">
+                    <p className="mt-1 flex items-center gap-1.5 text-caption text-fg-subtle">
                         <Info aria-hidden className="size-3.5 shrink-0" />
                         تعريفها مُعتمد — نمط موازين — وتُفعَّل حين تُبنى الميزة في موجتها.
                     </p>
                 ) : null}
 
                 {blockedByParent ? (
-                    <p className="mt-1 flex items-center gap-1.5 text-micro text-warning">
+                    <p className="mt-1 flex items-center gap-1.5 text-caption text-warning">
                         <Lock aria-hidden className="size-3.5 shrink-0" />
                         تحتاج تفعيل «{fn.depends_on_label}» أولًا.
                     </p>

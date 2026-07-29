@@ -75,11 +75,13 @@ class SectionsSeeder extends Seeder
             $this->provision->handle($project);
 
             foreach ($sections as $index => $section) {
+                // المفتاح الاسم لا الرابط: الرابط اشتقاقٌ من الاسم، وتغيير دالة
+                // الاشتقاق يجعل المزارع يفقد صفوفه فيزرع مجموعة ثانية كاملة.
                 ProjectSection::query()->updateOrCreate(
-                    ['project_id' => $project->id, 'slug' => Slug::make($section['name'], 'section')],
+                    ['project_id' => $project->id, 'name' => $section['name']],
                     [
                         ...$this->capabilities($section['caps'] ?? []),
-                        'name' => $section['name'],
+                        'slug' => Slug::make($section['name'], 'section'),
                         'description' => $section['about'],
                         'sort_order' => $index + 1,
                     ],
