@@ -6,9 +6,11 @@ namespace App\Domains\Providers\Services;
 
 use App\Domains\Providers\Actions\PerformFailover;
 use App\Domains\Providers\Enums\FailoverReason;
+use App\Domains\Providers\Enums\ProviderSetting;
 use App\Domains\Providers\Enums\ProviderStatus;
 use App\Domains\Providers\Models\AiProvider;
 use App\Domains\Providers\Models\AiProviderHealthCheck;
+use App\Domains\Providers\Models\ProviderSettingValue;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -89,7 +91,7 @@ class ProviderHealthService
         ]);
 
         $failures = $healthy ? 0 : $provider->consecutive_failures + 1;
-        $threshold = config()->integer('hiroote.health_check.failure_threshold', 2);
+        $threshold = config()->integer('hiroote.health_check.failure_threshold', 3);
 
         $provider->forceFill([
             'status' => match (true) {
@@ -99,10 +101,16 @@ class ProviderHealthService
             },
             'consecutive_failures' => $failures,
             'last_checked_at' => now(),
+            ...$this->rollingMetrics($provider, $healthy, $latencyMs),
         ])->save();
 
-        // التحويل الاحتياطي التلقائي: يقع فقط عندما يتجاوز المزود النشط العتبة.
-        if ($provider->is_active && $provider->status === ProviderStatus::Down) {
+        // التحويل الاحتياطي التلقائي يقع فقط عندما يتجاوز المزود النشط العتبة،
+        // وفقط إذا كانت سياسة التحويل التلقائي مفعلة (وثيقة التصميم §8).
+        if (
+            $provider->is_active
+            && $provider->status === ProviderStatus::Down
+            && ProviderSettingValue::isEnabled(ProviderSetting::AutoFailover)
+        ) {
             $this->failover->handle(
                 reason: FailoverReason::HealthCheckFailure,
                 details: ['error' => $error, 'consecutive_failures' => $failures],
@@ -110,5 +118,34 @@ class ProviderHealthService
         }
 
         return $check;
+    }
+
+    /**
+     * متوسطات متجددة على آخر 20 فحصًا — رقم واحد شاذ لا يقلب المؤشر،
+     * ولا نحتاج تجميعًا كاملًا للجدول عند كل فحص.
+     *
+     * @return array<string, int|string>
+     */
+    private function rollingMetrics(AiProvider $provider, bool $healthy, ?int $latencyMs): array
+    {
+        $recent = $provider->healthChecks()
+            ->latest('id')
+            ->limit(20)
+            ->get(['healthy', 'latency_ms']);
+
+        $failed = $recent->where('healthy', false)->count();
+        $errorRate = $recent->isEmpty() ? 0.0 : ($failed / $recent->count()) * 100;
+
+        $metrics = ['error_rate' => number_format($errorRate, 2, '.', '')];
+
+        $latencies = $recent->whereNotNull('latency_ms')->pluck('latency_ms');
+
+        if ($latencies->isNotEmpty()) {
+            $metrics['avg_latency_ms'] = (int) round((float) $latencies->avg());
+        } elseif ($healthy && $latencyMs !== null) {
+            $metrics['avg_latency_ms'] = $latencyMs;
+        }
+
+        return $metrics;
     }
 }

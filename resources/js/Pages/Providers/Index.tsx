@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, KeyRound, RefreshCw, Server, ShieldCheck, Trash2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { AdminLayout } from '@/Layouts/AdminLayout';
 import { Alert } from '@/Components/ui/Alert';
 import { Badge } from '@/Components/ui/Badge';
@@ -8,6 +9,9 @@ import { Button } from '@/Components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/Components/ui/Card';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { Input } from '@/Components/ui/Input';
+import { PageHeader } from '@/Components/ui/PageHeader';
+import { Switch } from '@/Components/ui/Switch';
+import { Toggle } from '@/Components/ui/Toggle';
 import { usePermissions } from '@/Hooks/usePermissions';
 import type { StatusTone } from '@/types';
 
@@ -37,22 +41,34 @@ interface Provider {
     status_label: string;
     consecutive_failures: number;
     last_checked_at: string | null;
+    latency_ms: number | null;
+    error_rate: number;
+    balance: number;
+    burn_rate: number;
+    currency: string;
+    default_model: string | null;
     models: ProviderModel[];
     credentials: ProviderCredential[];
 }
 
-interface FailoverEvent {
-    id: number;
-    from: string | null;
-    to: string | null;
-    reason: string;
-    triggered_by: string | null;
-    created_at: string;
-}
-
 interface ProvidersPageProps {
+    systemStatus: { label: string; tone: StatusTone };
     providers: Provider[];
-    recentFailovers: FailoverEvent[];
+    activeProvider: Provider | null;
+    healthCheck: {
+        intervalMinutes: number;
+        failureThreshold: number;
+        nextCheckInSeconds: number | null;
+    };
+    failoverPolicies: { key: string; label: string; enabled: boolean }[];
+    recentFailovers: {
+        id: number;
+        from: string | null;
+        to: string | null;
+        reason: string;
+        triggered_by: string | null;
+        created_at: string;
+    }[];
 }
 
 const STATUS_TONES: Record<Provider['status'], StatusTone> = {
@@ -69,11 +85,91 @@ function formatDate(value: string | null): string {
     return new Date(value).toLocaleString('ar', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+function formatMoney(amount: number, currency: string): string {
+    return `${amount.toLocaleString('ar', { maximumFractionDigits: 0 })} ${currency === 'SAR' ? 'ر.س' : currency}`;
+}
+
+function formatLatency(ms: number | null): string {
+    return ms === null ? '—' : `${(ms / 1000).toFixed(1)} ث`;
+}
+
+function queueLabel(index: number): { text: string; tone: StatusTone } {
+    if (index === 0) {
+        return { text: 'أساسي', tone: 'success' };
+    }
+    return { text: `احتياطي ${String(index)}`, tone: index === 1 ? 'info' : 'warning' };
+}
+
+/**
+ * عدّاد الفحص القادم — وثيقة التصميم §9.
+ *
+ * The parent remounts this with `key={seconds}` on every server refresh, so the
+ * initial value comes straight from props and the effect only owns the ticker.
+ */
+function CheckCountdown({ seconds }: { seconds: number }) {
+    const [remaining, setRemaining] = useState(seconds);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setRemaining((value) => (value <= 0 ? 0 : value - 1));
+        }, 1000);
+
+        return () => {
+            clearInterval(timer);
+        };
+    }, []);
+
+    const pad = (value: number) => String(value).padStart(2, '0');
+
+    return (
+        <span className="font-mono text-2xl font-bold text-fg-default" dir="ltr">
+            {pad(Math.floor(remaining / 3600))}:{pad(Math.floor((remaining % 3600) / 60))}:
+            {pad(remaining % 60)}
+        </span>
+    );
+}
+
+/** زر إجراء بأيقونة فقط — التسمية تصل عبر aria-label و title. */
+function IconAction({
+    label,
+    icon: Icon,
+    onClick,
+    active = false,
+}: {
+    label: string;
+    icon: LucideIcon;
+    onClick: () => void;
+    active?: boolean;
+}) {
+    return (
+        <button
+            type="button"
+            title={label}
+            aria-label={label}
+            aria-pressed={active}
+            onClick={onClick}
+            className={
+                active
+                    ? 'flex size-8 items-center justify-center rounded-control bg-accent-soft text-accent'
+                    : 'flex size-8 items-center justify-center rounded-control text-fg-muted hover:bg-surface-sunken hover:text-fg-default'
+            }
+        >
+            <Icon aria-hidden className="size-4" />
+        </button>
+    );
+}
+
+function MetricTile({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded-control border border-border-default bg-surface-sunken px-4 py-3">
+            <p className="text-xs text-fg-muted">{label}</p>
+            <p className="mt-1 text-base font-bold text-fg-default">{value}</p>
+        </div>
+    );
+}
+
 function CredentialForm({ provider }: { provider: Provider }) {
-    const { data, setData, post, processing, errors, reset } = useForm({
-        label: '',
-        api_key: '',
-    });
+    const { data, setData, post, processing, errors, reset } = useForm({ label: '', api_key: '' });
 
     return (
         <form
@@ -122,21 +218,23 @@ function CredentialForm({ provider }: { provider: Provider }) {
     );
 }
 
-function ProviderCard({
-    provider,
-    index,
-    total,
-    order,
-}: {
-    provider: Provider;
-    index: number;
-    total: number;
-    order: number[];
-}) {
+export default function Index({
+    systemStatus,
+    providers,
+    activeProvider,
+    healthCheck,
+    failoverPolicies,
+    recentFailovers,
+}: ProvidersPageProps) {
     const { can } = usePermissions();
-    const [showCredentialForm, setShowCredentialForm] = useState(false);
+    const [openCredentials, setOpenCredentials] = useState<number | null>(null);
 
-    const move = (direction: -1 | 1) => {
+    const order = providers.map((provider) => provider.id);
+    const noKeys = providers.every((provider) =>
+        provider.credentials.every((credential) => !credential.is_active),
+    );
+
+    const move = (index: number, direction: -1 | 1) => {
         const next = [...order];
         const target = index + direction;
         const current = next[index];
@@ -149,308 +247,439 @@ function ProviderCard({
         router.post('/providers/reorder', { order: next }, { preserveScroll: true });
     };
 
-    const activeCredential = provider.credentials.find((credential) => credential.is_active);
-
     return (
-        <Card className={provider.is_active ? 'border-brand-500 ring-1 ring-brand-500/40' : ''}>
-            <CardHeader
-                title={provider.name}
-                description={
-                    provider.models.find((model) => model.is_default)?.display_name ??
-                    'لا يوجد نموذج افتراضي'
-                }
-                actions={
-                    <div className="flex items-center gap-2">
-                        {provider.is_active ? (
-                            <Badge tone="info" dot>
+        <AdminLayout>
+            <Head title="المزودون والنماذج" />
+
+            <PageHeader
+                title="المزودون والنماذج"
+                description="مركز تشغيل ومراقبة المساعد الذكي"
+                systemStatus={systemStatus}
+                period="آخر 7 أيام"
+            />
+
+            {noKeys && providers.length > 0 ? (
+                <Alert tone="warning" title="لا توجد مفاتيح فعالة">
+                    أضف مفتاح API لمزود واحد على الأقل من زر «إدارة المفاتيح» حتى يبدأ الفحص الذاتي
+                    والتشغيل.
+                </Alert>
+            ) : null}
+
+            {/* بطاقة المزود النشط — وثيقة التصميم §8 */}
+            {activeProvider === null ? (
+                <Card>
+                    <CardBody>
+                        <EmptyState
+                            icon={Server}
+                            title="لا يوجد مزود نشط"
+                            description="فعّل مزودًا وحوّل إليه ليبدأ استقبال الطلبات."
+                        />
+                    </CardBody>
+                </Card>
+            ) : (
+                <Card className="border-accent/40 ring-1 ring-accent/20">
+                    <CardHeader
+                        title={`${activeProvider.name} — ${activeProvider.default_model ?? 'بلا نموذج افتراضي'}`}
+                        description={`آخر فحص: ${formatDate(activeProvider.last_checked_at)}`}
+                        actions={
+                            <Badge tone="success" dot>
                                 المزود النشط
                             </Badge>
-                        ) : null}
-                        <Badge tone={STATUS_TONES[provider.status]} dot>
-                            {provider.status_label}
-                        </Badge>
-                    </div>
-                }
-            />
-            <CardBody className="space-y-4">
-                <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-                    <div>
-                        <dt className="text-fg-muted">الأولوية</dt>
-                        <dd className="mt-0.5 flex items-center gap-1 font-medium text-fg-default">
-                            {provider.priority}
-                            {can('providers.manage') ? (
-                                <span className="ms-1 inline-flex gap-0.5">
-                                    <button
-                                        type="button"
-                                        aria-label={`رفع أولوية ${provider.name}`}
-                                        disabled={index === 0}
-                                        onClick={() => {
-                                            move(-1);
-                                        }}
-                                        className="rounded p-0.5 text-fg-subtle hover:bg-surface-sunken disabled:opacity-30"
-                                    >
-                                        <ArrowUp aria-hidden className="size-3.5" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        aria-label={`خفض أولوية ${provider.name}`}
-                                        disabled={index === total - 1}
-                                        onClick={() => {
-                                            move(1);
-                                        }}
-                                        className="rounded p-0.5 text-fg-subtle hover:bg-surface-sunken disabled:opacity-30"
-                                    >
-                                        <ArrowDown aria-hidden className="size-3.5" />
-                                    </button>
-                                </span>
-                            ) : null}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt className="text-fg-muted">آخر فحص</dt>
-                        <dd className="mt-0.5 font-medium text-fg-default">
-                            {formatDate(provider.last_checked_at)}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt className="text-fg-muted">فشل متتالٍ</dt>
-                        <dd className="mt-0.5 font-medium text-fg-default">
-                            {provider.consecutive_failures}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt className="text-fg-muted">المفتاح الفعال</dt>
-                        <dd
-                            className="mt-0.5 font-mono text-xs font-medium text-fg-default"
-                            dir="ltr"
-                        >
-                            {activeCredential ? `••••${activeCredential.key_hint}` : 'لا يوجد'}
-                        </dd>
-                    </div>
-                </dl>
+                        }
+                    />
+                    <CardBody className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <MetricTile
+                            label="زمن الاستجابة"
+                            value={formatLatency(activeProvider.latency_ms)}
+                        />
+                        <MetricTile
+                            label="معدل الأخطاء"
+                            value={`${activeProvider.error_rate.toFixed(1)}%`}
+                        />
+                        <MetricTile
+                            label="الرصيد المتبقي"
+                            value={formatMoney(activeProvider.balance, activeProvider.currency)}
+                        />
+                        <MetricTile
+                            label="معدل الاستهلاك"
+                            value={`${activeProvider.burn_rate.toFixed(1)} ${activeProvider.currency === 'SAR' ? 'ر.س' : activeProvider.currency}/دقيقة`}
+                        />
+                    </CardBody>
+                </Card>
+            )}
 
-                {provider.models.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                        {provider.models.map((model) => (
-                            <Badge key={model.id} tone={model.is_default ? 'info' : 'neutral'}>
-                                {model.display_name}
-                            </Badge>
-                        ))}
-                    </div>
-                ) : null}
+            {/* ترتيب المزودين والطابور الاحتياطي */}
+            <Card>
+                <CardHeader
+                    title="ترتيب المزودين والطابور الاحتياطي"
+                    description="الترتيب يحدد من يستلم الطلبات عند تعطل السابق."
+                />
+                <CardBody className="p-0">
+                    {providers.length === 0 ? (
+                        <EmptyState
+                            icon={Server}
+                            title="لا يوجد مزودون"
+                            description="شغّل بذر قاعدة البيانات لإضافة المزودين الافتراضيين."
+                        />
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[840px] text-sm">
+                                <thead className="border-b border-border-default bg-surface-sunken text-fg-muted">
+                                    <tr>
+                                        <th className="px-4 py-3 text-start font-medium">
+                                            الأولوية
+                                        </th>
+                                        <th className="px-4 py-3 text-start font-medium">مفعل</th>
+                                        <th className="px-4 py-3 text-start font-medium">المزود</th>
+                                        <th className="px-4 py-3 text-start font-medium">
+                                            النموذج
+                                        </th>
+                                        <th className="px-4 py-3 text-start font-medium">الزمن</th>
+                                        <th className="px-4 py-3 text-start font-medium">
+                                            الأخطاء
+                                        </th>
+                                        <th className="px-4 py-3 text-start font-medium">الرصيد</th>
+                                        <th className="px-4 py-3 text-start font-medium">الحالة</th>
+                                        <th className="px-4 py-3 text-start font-medium">
+                                            إجراءات
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {providers.map((provider, index) => {
+                                        const queue = queueLabel(index);
+                                        return (
+                                            <tr
+                                                key={provider.id}
+                                                className="border-b border-border-default last:border-0"
+                                            >
+                                                <td className="px-4 py-3">
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="flex size-7 items-center justify-center rounded-control bg-accent-soft text-xs font-bold text-accent">
+                                                            {provider.priority}
+                                                        </span>
+                                                        {can('providers.manage') ? (
+                                                            <span className="inline-flex flex-col">
+                                                                <button
+                                                                    type="button"
+                                                                    aria-label={`رفع أولوية ${provider.name}`}
+                                                                    disabled={index === 0}
+                                                                    onClick={() => {
+                                                                        move(index, -1);
+                                                                    }}
+                                                                    className="rounded p-0.5 text-fg-subtle hover:bg-surface-sunken disabled:opacity-30"
+                                                                >
+                                                                    <ArrowUp
+                                                                        aria-hidden
+                                                                        className="size-3"
+                                                                    />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    aria-label={`خفض أولوية ${provider.name}`}
+                                                                    disabled={
+                                                                        index ===
+                                                                        providers.length - 1
+                                                                    }
+                                                                    onClick={() => {
+                                                                        move(index, 1);
+                                                                    }}
+                                                                    className="rounded p-0.5 text-fg-subtle hover:bg-surface-sunken disabled:opacity-30"
+                                                                >
+                                                                    <ArrowDown
+                                                                        aria-hidden
+                                                                        className="size-3"
+                                                                    />
+                                                                </button>
+                                                            </span>
+                                                        ) : null}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Switch
+                                                        aria-label={`تفعيل ${provider.name}`}
+                                                        checked={provider.is_enabled}
+                                                        disabled={!can('providers.manage')}
+                                                        onChange={(checked) => {
+                                                            router.post(
+                                                                `/providers/${String(provider.id)}/toggle`,
+                                                                { enabled: checked },
+                                                                { preserveScroll: true },
+                                                            );
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3 font-bold text-fg-default">
+                                                    {provider.name}
+                                                </td>
+                                                <td className="px-4 py-3 text-fg-muted">
+                                                    {provider.default_model ?? '—'}
+                                                </td>
+                                                <td className="px-4 py-3 text-fg-muted">
+                                                    {formatLatency(provider.latency_ms)}
+                                                </td>
+                                                <td className="px-4 py-3 text-fg-muted">
+                                                    {provider.error_rate.toFixed(1)}%
+                                                </td>
+                                                <td className="px-4 py-3 text-fg-muted">
+                                                    {formatMoney(
+                                                        provider.balance,
+                                                        provider.currency,
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className="flex flex-col items-start gap-1">
+                                                        <Badge tone={queue.tone}>
+                                                            {queue.text}
+                                                        </Badge>
+                                                        <Badge
+                                                            tone={STATUS_TONES[provider.status]}
+                                                            dot
+                                                        >
+                                                            {provider.status_label}
+                                                        </Badge>
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className="flex items-center gap-1">
+                                                        {can('providers.manage') ? (
+                                                            <IconAction
+                                                                label={`فحص ${provider.name} الآن`}
+                                                                icon={RefreshCw}
+                                                                onClick={() => {
+                                                                    router.post(
+                                                                        `/providers/${String(provider.id)}/check`,
+                                                                        {},
+                                                                        { preserveScroll: true },
+                                                                    );
+                                                                }}
+                                                            />
+                                                        ) : null}
 
-                <div className="flex flex-wrap items-center gap-2 border-t border-border-default pt-4">
-                    {can('providers.manage') ? (
-                        <>
-                            <label className="flex cursor-pointer items-center gap-2 text-sm text-fg-default">
-                                <input
-                                    type="checkbox"
-                                    role="switch"
-                                    checked={provider.is_enabled}
-                                    onChange={(event) => {
-                                        router.post(
-                                            `/providers/${String(provider.id)}/toggle`,
-                                            { enabled: event.target.checked },
-                                            { preserveScroll: true },
+                                                        {can('providers.failover') &&
+                                                        !provider.is_active &&
+                                                        provider.is_enabled ? (
+                                                            <IconAction
+                                                                label={`التحويل إلى ${provider.name}`}
+                                                                icon={ShieldCheck}
+                                                                onClick={() => {
+                                                                    router.post(
+                                                                        `/providers/${String(provider.id)}/activate`,
+                                                                        {},
+                                                                        { preserveScroll: true },
+                                                                    );
+                                                                }}
+                                                            />
+                                                        ) : null}
+
+                                                        {can('providers.manage_credentials') ? (
+                                                            <IconAction
+                                                                label={`مفاتيح ${provider.name}`}
+                                                                icon={KeyRound}
+                                                                active={
+                                                                    openCredentials === provider.id
+                                                                }
+                                                                onClick={() => {
+                                                                    setOpenCredentials((current) =>
+                                                                        current === provider.id
+                                                                            ? null
+                                                                            : provider.id,
+                                                                    );
+                                                                }}
+                                                            />
+                                                        ) : null}
+                                                    </span>
+                                                </td>
+                                            </tr>
                                         );
-                                    }}
-                                    className="size-4 rounded border-border-strong"
-                                />
-                                مفعل
-                            </label>
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </CardBody>
+            </Card>
 
+            {/* نموذج المفاتيح للمزود المختار */}
+            {openCredentials !== null && can('providers.manage_credentials')
+                ? providers
+                      .filter((provider) => provider.id === openCredentials)
+                      .map((provider) => (
+                          <Card key={provider.id}>
+                              <CardHeader
+                                  title={`مفاتيح ${provider.name}`}
+                                  description="المفتاح الجديد يُبطل السابق تلقائيًا، ولا يظهر كاملًا بعد الحفظ."
+                              />
+                              <CardBody className="space-y-4">
+                                  <CredentialForm provider={provider} />
+
+                                  {provider.credentials.length > 0 ? (
+                                      <ul className="space-y-1 text-sm">
+                                          {provider.credentials.map((credential) => (
+                                              <li
+                                                  key={credential.id}
+                                                  className="flex items-center justify-between gap-2 rounded-control border border-border-default bg-surface-sunken px-4 py-2.5"
+                                              >
+                                                  <span className="min-w-0 truncate text-fg-default">
+                                                      {credential.label}{' '}
+                                                      <span
+                                                          className="font-mono text-xs text-fg-muted"
+                                                          dir="ltr"
+                                                      >
+                                                          ••••{credential.key_hint}
+                                                      </span>
+                                                  </span>
+                                                  <span className="flex shrink-0 items-center gap-2">
+                                                      <Badge
+                                                          tone={
+                                                              credential.is_active
+                                                                  ? 'success'
+                                                                  : 'neutral'
+                                                          }
+                                                      >
+                                                          {credential.is_active ? 'فعال' : 'مبطل'}
+                                                      </Badge>
+                                                      {credential.is_active ? (
+                                                          <button
+                                                              type="button"
+                                                              aria-label={`إبطال ${credential.label}`}
+                                                              onClick={() => {
+                                                                  router.delete(
+                                                                      `/providers/${String(provider.id)}/credentials/${String(credential.id)}`,
+                                                                      { preserveScroll: true },
+                                                                  );
+                                                              }}
+                                                              className="rounded p-1 text-fg-subtle hover:bg-danger-soft hover:text-danger"
+                                                          >
+                                                              <Trash2
+                                                                  aria-hidden
+                                                                  className="size-4"
+                                                              />
+                                                          </button>
+                                                      ) : null}
+                                                  </span>
+                                              </li>
+                                          ))}
+                                      </ul>
+                                  ) : null}
+                              </CardBody>
+                          </Card>
+                      ))
+                : null}
+
+            <div className="grid gap-4 lg:grid-cols-2">
+                {/* الفحص الذاتي والحالة — وثيقة التصميم §9 */}
+                <Card>
+                    <CardHeader title="الفحص الذاتي والحالة" />
+                    <CardBody className="space-y-4">
+                        <div className="flex items-center justify-between gap-3 rounded-control border border-border-default bg-surface-sunken px-4 py-3">
+                            <span className="text-xs text-fg-muted">الفحص القادم بعد</span>
+                            {healthCheck.nextCheckInSeconds === null ? (
+                                <span className="text-sm text-fg-subtle">لم يُجرَ فحص بعد</span>
+                            ) : (
+                                <CheckCountdown
+                                    key={healthCheck.nextCheckInSeconds}
+                                    seconds={healthCheck.nextCheckInSeconds}
+                                />
+                            )}
+                        </div>
+
+                        <dl className="space-y-2 text-sm">
+                            <div className="flex justify-between gap-3">
+                                <dt className="text-fg-muted">دورة الفحص</dt>
+                                <dd className="font-medium text-fg-default">
+                                    {healthCheck.intervalMinutes >= 60
+                                        ? 'كل ساعة'
+                                        : `كل ${String(healthCheck.intervalMinutes)} دقيقة`}
+                                </dd>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <dt className="text-fg-muted">عتبة التحويل</dt>
+                                <dd className="font-medium text-fg-default">
+                                    عند {healthCheck.failureThreshold} أخطاء متتالية يتم التحويل
+                                    فورًا
+                                </dd>
+                            </div>
+                        </dl>
+
+                        {can('providers.manage') && activeProvider !== null ? (
                             <Button
-                                variant="secondary"
-                                size="sm"
+                                className="w-full"
                                 onClick={() => {
                                     router.post(
-                                        `/providers/${String(provider.id)}/check`,
+                                        `/providers/${String(activeProvider.id)}/check`,
                                         {},
                                         { preserveScroll: true },
                                     );
                                 }}
                             >
                                 <RefreshCw aria-hidden className="size-4" />
-                                فحص الآن
+                                تنفيذ فحص الآن
                             </Button>
-                        </>
-                    ) : null}
-
-                    {can('providers.failover') && !provider.is_active && provider.is_enabled ? (
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                                router.post(
-                                    `/providers/${String(provider.id)}/activate`,
-                                    {},
-                                    { preserveScroll: true },
-                                );
-                            }}
-                        >
-                            <ShieldCheck aria-hidden className="size-4" />
-                            تحويل إليه
-                        </Button>
-                    ) : null}
-
-                    {can('providers.manage_credentials') ? (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                                setShowCredentialForm((value) => !value);
-                            }}
-                        >
-                            <KeyRound aria-hidden className="size-4" />
-                            {showCredentialForm ? 'إخفاء نموذج المفتاح' : 'إدارة المفاتيح'}
-                        </Button>
-                    ) : null}
-                </div>
-
-                {showCredentialForm && can('providers.manage_credentials') ? (
-                    <div className="space-y-3 rounded-card bg-surface-sunken p-4">
-                        <CredentialForm provider={provider} />
-
-                        {provider.credentials.length > 0 ? (
-                            <ul className="space-y-1 text-sm">
-                                {provider.credentials.map((credential) => (
-                                    <li
-                                        key={credential.id}
-                                        className="flex items-center justify-between gap-2 rounded-control bg-surface-raised px-3 py-2"
-                                    >
-                                        <span className="min-w-0 truncate text-fg-default">
-                                            {credential.label}{' '}
-                                            <span
-                                                className="font-mono text-xs text-fg-muted"
-                                                dir="ltr"
-                                            >
-                                                ••••{credential.key_hint}
-                                            </span>
-                                        </span>
-                                        <span className="flex shrink-0 items-center gap-2">
-                                            {credential.is_active ? (
-                                                <Badge tone="success">فعال</Badge>
-                                            ) : (
-                                                <Badge tone="neutral">مبطل</Badge>
-                                            )}
-                                            {credential.is_active ? (
-                                                <button
-                                                    type="button"
-                                                    aria-label={`إبطال ${credential.label}`}
-                                                    onClick={() => {
-                                                        router.delete(
-                                                            `/providers/${String(provider.id)}/credentials/${String(credential.id)}`,
-                                                            { preserveScroll: true },
-                                                        );
-                                                    }}
-                                                    className="rounded p-1 text-fg-subtle hover:bg-danger-soft hover:text-danger"
-                                                >
-                                                    <Trash2 aria-hidden className="size-4" />
-                                                </button>
-                                            ) : null}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
                         ) : null}
-                    </div>
-                ) : null}
-            </CardBody>
-        </Card>
-    );
-}
-
-export default function Index({ providers, recentFailovers }: ProvidersPageProps) {
-    const order = providers.map((provider) => provider.id);
-    const noKeys = providers.every((provider) =>
-        provider.credentials.every((credential) => !credential.is_active),
-    );
-
-    return (
-        <AdminLayout title="المزودون والنماذج">
-            <Head title="المزودون والنماذج" />
-
-            {noKeys && providers.length > 0 ? (
-                <Alert
-                    tone="warning"
-                    title="لا توجد مفاتيح فعالة"
-                    children="أضف مفتاح API لمزود واحد على الأقل من زر «إدارة المفاتيح» حتى يبدأ الفحص الذاتي والتشغيل."
-                />
-            ) : null}
-
-            {providers.length === 0 ? (
-                <Card>
-                    <CardBody>
-                        <EmptyState
-                            icon={Server}
-                            title="لا يوجد مزودون"
-                            description="شغّل بذر قاعدة البيانات (php artisan db:seed) لإضافة المزودين الافتراضيين."
-                        />
                     </CardBody>
                 </Card>
-            ) : (
-                <div className="space-y-4">
-                    {providers.map((provider, index) => (
-                        <ProviderCard
-                            key={provider.id}
-                            provider={provider}
-                            index={index}
-                            total={providers.length}
-                            order={order}
-                        />
-                    ))}
-                </div>
-            )}
 
+                {/* سياسات التحويل التلقائي — وثيقة التصميم §8 */}
+                <Card>
+                    <CardHeader
+                        title="سياسات التحويل التلقائي"
+                        description={
+                            can('maintenance.toggle')
+                                ? undefined
+                                : 'تحتاج صلاحية التحكم لتعديل هذه السياسات.'
+                        }
+                    />
+                    <CardBody className="space-y-2">
+                        {failoverPolicies.map((policy) => (
+                            <Toggle
+                                key={policy.key}
+                                label={policy.label}
+                                checked={policy.enabled}
+                                disabled={!can('maintenance.toggle')}
+                                onChange={(checked) => {
+                                    router.post(
+                                        '/settings/toggle',
+                                        { key: policy.key, enabled: checked },
+                                        { preserveScroll: true },
+                                    );
+                                }}
+                            />
+                        ))}
+                    </CardBody>
+                </Card>
+            </div>
+
+            {/* سجل آخر التحويلات */}
             <Card>
                 <CardHeader
-                    title="آخر أحداث التحويل"
-                    description="سجل التحويل بين المزودين — يدويًا أو تلقائيًا عند فشل الفحص."
+                    title="سجل آخر التحويلات"
+                    description="كل تحويل بين المزودين — يدويًا أو تلقائيًا عند فشل الفحص."
                 />
-                <CardBody>
+                <CardBody className="p-0">
                     {recentFailovers.length === 0 ? (
                         <EmptyState
                             title="لا توجد أحداث تحويل"
-                            description="سيظهر هنا كل تحويل بين المزودين مع سببه ومن نفذه."
+                            description="سيظهر هنا كل تحويل مع سببه ومن نفذه."
                         />
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-border-default text-start text-fg-muted">
-                                        <th className="pe-4 pb-2 text-start font-medium">من</th>
-                                        <th className="pe-4 pb-2 text-start font-medium">إلى</th>
-                                        <th className="pe-4 pb-2 text-start font-medium">السبب</th>
-                                        <th className="pe-4 pb-2 text-start font-medium">المنفذ</th>
-                                        <th className="pb-2 text-start font-medium">الوقت</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {recentFailovers.map((event) => (
-                                        <tr
-                                            key={event.id}
-                                            className="border-b border-border-default last:border-0"
-                                        >
-                                            <td className="py-2 pe-4 text-fg-default">
-                                                {event.from ?? '—'}
-                                            </td>
-                                            <td className="py-2 pe-4 font-medium text-fg-default">
-                                                {event.to ?? '—'}
-                                            </td>
-                                            <td className="py-2 pe-4 text-fg-muted">
-                                                {event.reason}
-                                            </td>
-                                            <td className="py-2 pe-4 text-fg-muted">
-                                                {event.triggered_by ?? 'تلقائي'}
-                                            </td>
-                                            <td className="py-2 text-fg-muted">
-                                                {formatDate(event.created_at)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                        <ul>
+                            {recentFailovers.map((event) => (
+                                <li
+                                    key={event.id}
+                                    className="flex flex-wrap items-center justify-between gap-3 border-b border-border-default px-6 py-3 last:border-0"
+                                >
+                                    <span className="font-bold text-fg-default" dir="ltr">
+                                        {event.from ?? '—'} ← {event.to ?? '—'}
+                                    </span>
+                                    <span className="flex items-center gap-4 text-xs text-fg-muted">
+                                        <span>{event.reason}</span>
+                                        <span>{event.triggered_by ?? 'تلقائي'}</span>
+                                        <span>{formatDate(event.created_at)}</span>
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
                     )}
                 </CardBody>
             </Card>

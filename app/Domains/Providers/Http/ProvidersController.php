@@ -10,13 +10,17 @@ use App\Domains\Providers\Actions\RevokeProviderCredential;
 use App\Domains\Providers\Actions\StoreProviderCredential;
 use App\Domains\Providers\Actions\ToggleProvider;
 use App\Domains\Providers\Enums\FailoverReason;
+use App\Domains\Providers\Enums\ProviderSetting;
 use App\Domains\Providers\Models\AiFailoverEvent;
 use App\Domains\Providers\Models\AiProvider;
 use App\Domains\Providers\Models\AiProviderCredential;
+use App\Domains\Providers\Models\ProviderSettingValue;
 use App\Domains\Providers\Services\ProviderHealthService;
 use App\Http\Controllers\Controller;
+use App\Support\Http\SystemStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,51 +34,92 @@ class ProvidersController extends Controller
                 'credentials' => fn ($query) => $query->latest('id'),
             ])
             ->orderBy('priority')
-            ->get()
-            ->map(fn (AiProvider $provider): array => [
-                'id' => $provider->id,
-                'name' => $provider->name,
-                'slug' => $provider->slug,
-                'priority' => $provider->priority,
-                'is_enabled' => $provider->is_enabled,
-                'is_active' => $provider->is_active,
-                'status' => $provider->status->value,
-                'status_label' => $provider->status->label(),
-                'consecutive_failures' => $provider->consecutive_failures,
-                'last_checked_at' => $provider->last_checked_at?->toIso8601String(),
-                'models' => $provider->models->map(fn ($model): array => [
-                    'id' => $model->id,
-                    'name' => $model->name,
-                    'display_name' => $model->display_name,
-                    'is_default' => $model->is_default,
-                ])->all(),
-                'credentials' => $provider->credentials->map(fn (AiProviderCredential $credential): array => [
-                    'id' => $credential->id,
-                    'label' => $credential->label,
-                    'key_hint' => $credential->key_hint,
-                    'is_active' => $credential->is_active,
-                    'last_used_at' => $credential->last_used_at?->toIso8601String(),
-                ])->all(),
-            ]);
+            ->get();
 
-        $recentFailovers = AiFailoverEvent::query()
-            ->with(['fromProvider', 'toProvider', 'triggeredBy'])
-            ->latest('id')
-            ->limit(10)
-            ->get()
-            ->map(fn (AiFailoverEvent $event): array => [
-                'id' => $event->id,
-                'from' => $event->fromProvider?->name,
-                'to' => $event->toProvider?->name,
-                'reason' => $event->reason->label(),
-                'triggered_by' => $event->triggeredBy?->name,
-                'created_at' => $event->created_at->toIso8601String(),
-            ]);
+        $active = $providers->firstWhere('is_active', true);
+        $intervalMinutes = config()->integer('hiroote.health_check.interval_minutes', 60);
 
         return Inertia::render('Providers/Index', [
-            'providers' => $providers,
-            'recentFailovers' => $recentFailovers,
+            'systemStatus' => SystemStatus::current(),
+            'providers' => $providers->map($this->presentProvider(...))->values(),
+            'activeProvider' => $active === null ? null : $this->presentProvider($active),
+            'healthCheck' => [
+                'intervalMinutes' => $intervalMinutes,
+                'failureThreshold' => config()->integer('hiroote.health_check.failure_threshold', 3),
+                // ثوانٍ متبقية حتى الفحص القادم — الواجهة تعدّها تنازليًا.
+                'nextCheckInSeconds' => $this->secondsUntilNextCheck($active?->last_checked_at, $intervalMinutes),
+            ],
+            'failoverPolicies' => collect(ProviderSetting::failoverPolicies())
+                ->map(fn (ProviderSetting $setting): array => [
+                    'key' => $setting->value,
+                    'label' => $setting->label(),
+                    'enabled' => ProviderSettingValue::isEnabled($setting),
+                ])
+                ->values(),
+            'recentFailovers' => AiFailoverEvent::query()
+                ->with(['fromProvider', 'toProvider', 'triggeredBy'])
+                ->latest('id')
+                ->limit(10)
+                ->get()
+                ->map(fn (AiFailoverEvent $event): array => [
+                    'id' => $event->id,
+                    'from' => $event->fromProvider?->name,
+                    'to' => $event->toProvider?->name,
+                    'reason' => $event->reason->label(),
+                    'triggered_by' => $event->triggeredBy?->name,
+                    'created_at' => $event->created_at->toIso8601String(),
+                ])
+                ->values(),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentProvider(AiProvider $provider): array
+    {
+        return [
+            'id' => $provider->id,
+            'name' => $provider->name,
+            'slug' => $provider->slug,
+            'priority' => $provider->priority,
+            'is_enabled' => $provider->is_enabled,
+            'is_active' => $provider->is_active,
+            'status' => $provider->status->value,
+            'status_label' => $provider->status->label(),
+            'consecutive_failures' => $provider->consecutive_failures,
+            'last_checked_at' => $provider->last_checked_at?->toIso8601String(),
+            'latency_ms' => $provider->avg_latency_ms,
+            'error_rate' => (float) $provider->error_rate,
+            'balance' => (float) $provider->balance,
+            'burn_rate' => (float) $provider->burn_rate_per_minute,
+            'currency' => $provider->currency,
+            'default_model' => $provider->models->firstWhere('is_default', true)?->display_name,
+            'models' => $provider->models->map(fn ($model): array => [
+                'id' => $model->id,
+                'name' => $model->name,
+                'display_name' => $model->display_name,
+                'is_default' => $model->is_default,
+            ])->values(),
+            'credentials' => $provider->credentials->map(fn (AiProviderCredential $credential): array => [
+                'id' => $credential->id,
+                'label' => $credential->label,
+                'key_hint' => $credential->key_hint,
+                'is_active' => $credential->is_active,
+                'last_used_at' => $credential->last_used_at?->toIso8601String(),
+            ])->values(),
+        ];
+    }
+
+    private function secondsUntilNextCheck(?Carbon $lastCheck, int $intervalMinutes): ?int
+    {
+        if ($lastCheck === null) {
+            return null;
+        }
+
+        $next = $lastCheck->copy()->addMinutes($intervalMinutes);
+
+        return max(0, (int) now()->diffInSeconds($next, absolute: false));
     }
 
     public function toggle(Request $request, AiProvider $provider, ToggleProvider $action): RedirectResponse

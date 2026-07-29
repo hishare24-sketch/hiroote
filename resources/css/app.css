@@ -6,96 +6,107 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------------------------------------------------------------------------
- * Design tokens — وثيقة 03 §5
- * شبكة 8px، ألوان حالات ثابتة، وضعان فاتح وداكن، RTL افتراضي.
- * Semantic names only: components never reference a raw palette step, so a
- * palette change stays a one-file change.
+ * Design tokens — مأخوذة من ملف الفيجما المعتمد (وثيقة 03 §5)
+ * شبكة 8px، ألوان حالات ثابتة، RTL افتراضي.
+ *
+ * الفيجما يصمم الوضع الفاتح فقط؛ الوضع الداكن إضافة من عندنا تلتزم بنفس
+ * الدلالات — لذلك لا يشير أي مكون إلى درجة لونية خام، بل إلى اسم دلالي.
  * ------------------------------------------------------------------------ */
 @theme {
     --font-sans:
-        'IBM Plex Sans Arabic', 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-        'Segoe UI Emoji', 'Noto Color Emoji';
+        'Noto Sans Arabic', 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
     /* شبكة 8px */
     --spacing: 0.5rem;
 
-    --radius-card: 0.75rem;
-    --radius-control: 0.5rem;
+    /* الحواف كما في الفيجما: البطاقة 18px، عنصر التحكم 12px */
+    --radius-card: 1.125rem;
+    --radius-control: 0.75rem;
+    --radius-pill: 62.4375rem;
 
-    /* الهوية */
-    --color-brand-50: oklch(0.97 0.02 250);
-    --color-brand-100: oklch(0.93 0.04 250);
-    --color-brand-200: oklch(0.87 0.07 250);
-    --color-brand-300: oklch(0.78 0.11 250);
-    --color-brand-400: oklch(0.68 0.15 250);
-    --color-brand-500: oklch(0.58 0.18 250);
-    --color-brand-600: oklch(0.5 0.17 250);
-    --color-brand-700: oklch(0.42 0.14 250);
-    --color-brand-800: oklch(0.34 0.11 250);
-    --color-brand-900: oklch(0.27 0.08 250);
-
-    /* حالات ألوان ثابتة: success, warning, danger, info, neutral */
-    --color-success: oklch(0.55 0.14 150);
-    --color-warning: oklch(0.55 0.13 75);
-    --color-danger: oklch(0.53 0.19 25);
-    --color-info: oklch(0.53 0.14 250);
-    --color-neutral: oklch(0.5 0.01 260);
+    /* الهوية — #6d5df6 هو اللون الأساسي في الفيجما */
+    --color-brand-50: #f6f4ff;
+    --color-brand-100: #f1eeff;
+    --color-brand-200: #e0daff;
+    --color-brand-300: #c4b8fd;
+    --color-brand-400: #9b88fa;
+    --color-brand-500: #6d5df6;
+    --color-brand-600: #5b46f0;
+    --color-brand-700: #4a35d6;
+    --color-brand-800: #3c2caf;
+    --color-brand-900: #2f2389;
 }
 
 @layer base {
     :root {
-        --color-surface-base: oklch(0.98 0.003 260);
-        --color-surface-raised: oklch(1 0 0);
-        --color-surface-sunken: oklch(0.95 0.005 260);
-        --color-surface-overlay: oklch(1 0 0);
+        /* الأسطح */
+        --color-surface-base: #f6f8fc;
+        --color-surface-raised: #ffffff;
+        --color-surface-sunken: #fbfcfe;
+        --color-surface-track: #eef2f6;
+        --color-surface-overlay: #ffffff;
 
-        --color-fg-default: oklch(0.25 0.01 260);
-        --color-fg-muted: oklch(0.48 0.01 260);
-        --color-fg-subtle: oklch(0.58 0.01 260);
-        --color-fg-inverted: oklch(0.99 0 0);
+        /* النصوص */
+        --color-fg-default: #101828;
+        --color-fg-strong: #1d2939;
+        --color-fg-muted: #667085;
+        --color-fg-subtle: #98a2b3;
+        --color-fg-inverted: #ffffff;
 
-        --color-border-default: oklch(0.9 0.005 260);
-        --color-border-strong: oklch(0.8 0.008 260);
+        /* الحدود */
+        --color-border-default: #e4e7ec;
+        --color-border-strong: #d0d5dd;
 
-        --color-focus-ring: oklch(0.5 0.17 250);
+        --color-focus-ring: #6d5df6;
 
-        --color-success-soft: oklch(0.95 0.04 150);
-        --color-warning-soft: oklch(0.96 0.05 75);
-        --color-danger-soft: oklch(0.95 0.04 25);
-        --color-info-soft: oklch(0.95 0.03 250);
-        --color-neutral-soft: oklch(0.95 0.005 260);
+        /* حالات ألوان ثابتة: success, warning, danger, info, neutral */
+        --color-success: #16b364;
+        --color-success-soft: #ecfdf3;
+        --color-warning: #f79009;
+        --color-warning-soft: #fff7ed;
+        --color-danger: #f04438;
+        --color-danger-soft: #fef3f2;
+        --color-info: #2f80ed;
+        --color-info-soft: #eef6ff;
+        --color-neutral: #667085;
+        --color-neutral-soft: #f2f4f7;
+        --color-accent: #6d5df6;
+        --color-accent-soft: #f1eeff;
     }
 
     .dark {
-        --color-surface-base: oklch(0.19 0.008 260);
-        --color-surface-raised: oklch(0.23 0.01 260);
-        --color-surface-sunken: oklch(0.16 0.008 260);
-        --color-surface-overlay: oklch(0.25 0.01 260);
+        --color-surface-base: #0f1117;
+        --color-surface-raised: #171a23;
+        --color-surface-sunken: #1c202b;
+        --color-surface-track: #262b38;
+        --color-surface-overlay: #1c202b;
 
-        --color-fg-default: oklch(0.96 0.004 260);
-        --color-fg-muted: oklch(0.76 0.008 260);
-        --color-fg-subtle: oklch(0.64 0.008 260);
-        --color-fg-inverted: oklch(0.19 0.008 260);
+        --color-fg-default: #f2f4f7;
+        --color-fg-strong: #e4e7ec;
+        --color-fg-muted: #98a2b3;
+        --color-fg-subtle: #77839a;
+        --color-fg-inverted: #101828;
 
-        --color-border-default: oklch(0.32 0.01 260);
-        --color-border-strong: oklch(0.44 0.012 260);
+        --color-border-default: #262b38;
+        --color-border-strong: #3a4152;
 
-        --color-focus-ring: oklch(0.75 0.13 250);
+        --color-focus-ring: #9b88fa;
 
-        /* Status hues lighten on dark so text on them still clears AA. */
-        --color-success: oklch(0.74 0.15 150);
-        --color-warning: oklch(0.79 0.14 75);
-        --color-danger: oklch(0.7 0.17 25);
-        --color-info: oklch(0.72 0.13 250);
-        --color-neutral: oklch(0.72 0.01 260);
-
-        /* Soft fills darken rather than lighten against a dark base. */
-        --color-success-soft: oklch(0.28 0.05 150);
-        --color-warning-soft: oklch(0.3 0.06 75);
-        --color-danger-soft: oklch(0.28 0.07 25);
-        --color-info-soft: oklch(0.28 0.05 250);
-        --color-neutral-soft: oklch(0.27 0.008 260);
+        /* الأصباغ تُفتَح على الداكن ليبقى تباين النص فوقها AA. */
+        --color-success: #47cd89;
+        --color-success-soft: #10291d;
+        --color-warning: #fdb022;
+        --color-warning-soft: #2b1d0a;
+        --color-danger: #f97066;
+        --color-danger-soft: #2c1414;
+        --color-info: #6aa8f5;
+        --color-info-soft: #12203a;
+        --color-neutral: #98a2b3;
+        --color-neutral-soft: #21262f;
+        --color-accent: #9b88fa;
+        --color-accent-soft: #1e1b3a;
     }
 
     * {
@@ -119,15 +130,17 @@
     }
 }
 
-/* Exposes the base-layer variables above as Tailwind colour utilities
- * (bg-surface-raised, text-fg-muted, …) without duplicating their values. */
+/* يعرّض متغيرات الطبقة الأساسية كأدوات Tailwind (bg-surface-raised،
+ * text-fg-muted…) دون تكرار قيمها. */
 @theme inline {
     --color-surface-base: var(--color-surface-base);
     --color-surface-raised: var(--color-surface-raised);
     --color-surface-sunken: var(--color-surface-sunken);
+    --color-surface-track: var(--color-surface-track);
     --color-surface-overlay: var(--color-surface-overlay);
 
     --color-fg-default: var(--color-fg-default);
+    --color-fg-strong: var(--color-fg-strong);
     --color-fg-muted: var(--color-fg-muted);
     --color-fg-subtle: var(--color-fg-subtle);
     --color-fg-inverted: var(--color-fg-inverted);
@@ -135,11 +148,18 @@
     --color-border-default: var(--color-border-default);
     --color-border-strong: var(--color-border-strong);
 
+    --color-success: var(--color-success);
     --color-success-soft: var(--color-success-soft);
+    --color-warning: var(--color-warning);
     --color-warning-soft: var(--color-warning-soft);
+    --color-danger: var(--color-danger);
     --color-danger-soft: var(--color-danger-soft);
+    --color-info: var(--color-info);
     --color-info-soft: var(--color-info-soft);
+    --color-neutral: var(--color-neutral);
     --color-neutral-soft: var(--color-neutral-soft);
+    --color-accent: var(--color-accent);
+    --color-accent-soft: var(--color-accent-soft);
 }
 
 @utility skeleton-pulse {

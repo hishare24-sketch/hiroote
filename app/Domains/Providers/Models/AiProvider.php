@@ -26,6 +26,11 @@ use Illuminate\Support\Carbon;
  * @property ProviderStatus $status
  * @property int $consecutive_failures
  * @property Carbon|null $last_checked_at
+ * @property numeric-string $balance
+ * @property numeric-string $burn_rate_per_minute
+ * @property string $currency
+ * @property int|null $avg_latency_ms
+ * @property numeric-string $error_rate
  */
 class AiProvider extends Model
 {
@@ -58,6 +63,9 @@ class AiProvider extends Model
             'is_active' => 'boolean',
             'status' => ProviderStatus::class,
             'last_checked_at' => 'datetime',
+            'balance' => 'decimal:2',
+            'burn_rate_per_minute' => 'decimal:4',
+            'error_rate' => 'decimal:2',
         ];
     }
 

@@ -50,19 +50,34 @@ class ProviderHealthCheckTest extends TestCase
     }
 
     #[Test]
-    public function failed_ping_degrades_then_downs_provider(): void
+    public function failed_ping_degrades_then_downs_provider_at_the_threshold(): void
     {
         Http::fake(['api.openai.test/*' => Http::response('error', 500)]);
 
         $provider = $this->providerWithKey();
         $service = app(ProviderHealthService::class);
+        $threshold = config()->integer('hiroote.health_check.failure_threshold');
 
-        $service->check($provider);
-        $this->assertSame(ProviderStatus::Degraded, $provider->refresh()->status);
+        // العتبة في التصميم ثلاث محاولات؛ ما دونها «متذبذب» لا «متعطل».
+        for ($attempt = 1; $attempt < $threshold; $attempt++) {
+            $service->check($provider);
+            $this->assertSame(ProviderStatus::Degraded, $provider->refresh()->status);
+        }
 
         $service->check($provider);
         $this->assertSame(ProviderStatus::Down, $provider->refresh()->status);
-        $this->assertSame(2, $provider->consecutive_failures);
+        $this->assertSame($threshold, $provider->consecutive_failures);
+    }
+
+    #[Test]
+    public function repeated_failures_raise_the_recorded_error_rate(): void
+    {
+        Http::fake(['api.openai.test/*' => Http::response('error', 500)]);
+
+        $provider = $this->providerWithKey();
+        app(ProviderHealthService::class)->check($provider);
+
+        $this->assertSame('100.00', $provider->refresh()->error_rate);
     }
 
     #[Test]
@@ -85,8 +100,9 @@ class ProviderHealthCheckTest extends TestCase
         $backup = AiProvider::factory()->create(['priority' => 2]);
 
         $service = app(ProviderHealthService::class);
-        $service->check($active);
-        $service->check($active); // يتجاوز عتبة الفشل (2) فيتحول تلقائيًا
+        foreach (range(1, config()->integer('hiroote.health_check.failure_threshold')) as $ignored) {
+            $service->check($active);
+        }
 
         $this->assertFalse($active->refresh()->is_active);
         $this->assertTrue($backup->refresh()->is_active);

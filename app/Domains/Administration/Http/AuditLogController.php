@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Administration\Http;
 
+use App\Domains\Administration\Enums\AuditCategory;
 use App\Domains\Administration\Models\AuditLog;
 use App\Http\Controllers\Controller;
+use App\Support\Http\SystemStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,8 +28,52 @@ class AuditLogController extends Controller
             'to' => $request->date('to')?->toDateString(),
         ];
 
-        $logs = AuditLog::query()
+        $logs = $this->baseQuery($filters)
             ->with('actor')
+            ->latest('id')
+            ->paginate(25)
+            ->withQueryString()
+            ->through(function (AuditLog $log): array {
+                $category = AuditCategory::fromAction($log->action);
+
+                return [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'section' => $log->section,
+                    'category' => $category->label(),
+                    'category_tone' => $category->tone(),
+                    'actor' => $log->actor_label ?? 'النظام',
+                    'actor_role' => $log->actor_role,
+                    'old_values' => $log->old_values,
+                    'new_values' => $log->new_values,
+                    'reason' => $log->reason,
+                    'ip_address' => $log->ip_address,
+                    'request_id' => $log->request_id,
+                    'created_at' => $log->created_at->toIso8601String(),
+                ];
+            });
+
+        return Inertia::render('Audit/Index', [
+            'systemStatus' => SystemStatus::current(),
+            'logs' => $logs,
+            'filters' => $filters,
+            'stats' => $this->stats(),
+            'availableActions' => AuditLog::query()->distinct()->orderBy('action')->pluck('action'),
+            'availableSections' => AuditLog::query()
+                ->whereNotNull('section')
+                ->distinct()
+                ->orderBy('section')
+                ->pluck('section'),
+        ]);
+    }
+
+    /**
+     * @param  array{search: string, action: string, section: string, from: ?string, to: ?string}  $filters
+     * @return Builder<AuditLog>
+     */
+    private function baseQuery(array $filters): Builder
+    {
+        return AuditLog::query()
             ->when($filters['search'] !== '', function (Builder $query) use ($filters): void {
                 $term = '%'.$filters['search'].'%';
                 $query->where(function (Builder $inner) use ($term): void {
@@ -39,31 +85,25 @@ class AuditLogController extends Controller
             ->when($filters['action'] !== '', fn (Builder $query) => $query->where('action', $filters['action']))
             ->when($filters['section'] !== '', fn (Builder $query) => $query->where('section', $filters['section']))
             ->when($filters['from'] !== null, fn (Builder $query) => $query->whereDate('created_at', '>=', $filters['from']))
-            ->when($filters['to'] !== null, fn (Builder $query) => $query->whereDate('created_at', '<=', $filters['to']))
-            ->latest('id')
-            ->paginate(25)
-            ->withQueryString()
-            ->through(fn (AuditLog $log): array => [
-                'id' => $log->id,
-                'ulid' => $log->ulid,
-                'action' => $log->action,
-                'section' => $log->section,
-                'actor' => $log->actor_label ?? 'النظام',
-                'actor_role' => $log->actor_role,
-                'old_values' => $log->old_values,
-                'new_values' => $log->new_values,
-                'reason' => $log->reason,
-                'ip_address' => $log->ip_address,
-                'request_id' => $log->request_id,
-                'created_at' => $log->created_at->toIso8601String(),
-            ]);
+            ->when($filters['to'] !== null, fn (Builder $query) => $query->whereDate('created_at', '<=', $filters['to']));
+    }
 
-        return Inertia::render('Audit/Index', [
-            'logs' => $logs,
-            'filters' => $filters,
-            // القوائم مبنية من البيانات الفعلية حتى لا تعرض فلاتر بلا نتائج.
-            'availableActions' => AuditLog::query()->distinct()->orderBy('action')->pluck('action'),
-            'availableSections' => AuditLog::query()->whereNotNull('section')->distinct()->orderBy('section')->pluck('section'),
-        ]);
+    /**
+     * البطاقات الإحصائية الأربع — وثيقة التصميم §17.
+     *
+     * @return array{today: int, settingsChanges: int, failovers: int, failures: int}
+     */
+    private function stats(): array
+    {
+        return [
+            'today' => AuditLog::query()->whereDate('created_at', today())->count(),
+            'settingsChanges' => AuditLog::query()->where('action', 'like', 'settings.%')->count(),
+            'failovers' => AuditLog::query()->where('action', 'like', '%failover%')->count(),
+            'failures' => AuditLog::query()
+                ->where(fn (Builder $query) => $query
+                    ->where('action', 'like', '%failed%')
+                    ->orWhere('action', 'like', '%error%'))
+                ->count(),
+        ];
     }
 }

@@ -3,6 +3,8 @@ import { CheckCircle2, Clock } from 'lucide-react';
 import { AdminLayout } from '@/Layouts/AdminLayout';
 import { Badge } from '@/Components/ui/Badge';
 import { Card, CardBody, CardHeader } from '@/Components/ui/Card';
+import { PageHeader } from '@/Components/ui/PageHeader';
+import type { StatusTone } from '@/types';
 
 interface PlannedScreen {
     title: string;
@@ -11,10 +13,21 @@ interface PlannedScreen {
     items: string[];
 }
 
-export default function Index({ screen }: { screen: PlannedScreen }) {
+interface PlannedProps {
+    screen: PlannedScreen;
+    systemStatus: { label: string; tone: StatusTone };
+}
+
+export default function Index({ screen, systemStatus }: PlannedProps) {
     return (
-        <AdminLayout title={screen.title}>
+        <AdminLayout>
             <Head title={screen.title} />
+
+            <PageHeader
+                title={screen.title}
+                description={screen.summary}
+                systemStatus={systemStatus}
+            />
 
             <Card>
                 <CardHeader

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Support\Http\SystemStatus;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -118,6 +119,7 @@ class PlannedScreenController extends Controller
 
         return Inertia::render('Planned/Index', [
             'screen' => self::SCREENS[$screen],
+            'systemStatus' => SystemStatus::current(),
         ]);
     }
 }

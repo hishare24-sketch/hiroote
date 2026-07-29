@@ -1,19 +1,23 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { ScrollText, Search } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, ScrollText, Search, SlidersHorizontal } from 'lucide-react';
 import { AdminLayout } from '@/Layouts/AdminLayout';
-import { Badge } from '@/Components/ui/Badge';
 import { Button } from '@/Components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/Components/ui/Card';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { Input } from '@/Components/ui/Input';
+import { PageHeader } from '@/Components/ui/PageHeader';
 import { Select } from '@/Components/ui/Select';
+import { StatCard } from '@/Components/ui/StatCard';
+import type { StatusTone } from '@/types';
 
 interface AuditEntry {
     id: number;
     ulid: string;
     action: string;
     section: string | null;
+    category: string;
+    category_tone: string;
     actor: string;
     actor_role: string | null;
     old_values: Record<string, unknown> | null;
@@ -46,7 +50,16 @@ interface Filters {
     to: string | null;
 }
 
+interface AuditStats {
+    today: number;
+    settingsChanges: number;
+    failovers: number;
+    failures: number;
+}
+
 interface AuditPageProps {
+    systemStatus: { label: string; tone: StatusTone };
+    stats: AuditStats;
     logs: Paginated<AuditEntry>;
     filters: Filters;
     availableActions: string[];
@@ -88,7 +101,22 @@ function ValuePreview({ values }: { values: Record<string, unknown> | null }) {
     );
 }
 
+function categoryClass(tone: string): string {
+    return CATEGORY_TONES[tone] ?? 'bg-neutral-soft text-neutral';
+}
+
+const CATEGORY_TONES: Record<string, string> = {
+    accent: 'bg-accent-soft text-accent',
+    success: 'bg-success-soft text-success',
+    warning: 'bg-warning-soft text-warning',
+    danger: 'bg-danger-soft text-danger',
+    info: 'bg-info-soft text-info',
+    neutral: 'bg-neutral-soft text-neutral',
+};
+
 export default function Index({
+    systemStatus,
+    stats,
     logs,
     filters,
     availableActions,
@@ -119,8 +147,42 @@ export default function Index({
     };
 
     return (
-        <AdminLayout title="سجل التشغيل والتدقيق">
+        <AdminLayout>
             <Head title="سجل التشغيل والتدقيق" />
+
+            <PageHeader
+                title="سجل التشغيل والتدقيق"
+                description="تتبع تغييرات الإعدادات وعمليات المزودين والتنبيهات والمعرفة"
+                systemStatus={systemStatus}
+                period="آخر 7 أيام"
+            />
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                    label="أحداث اليوم"
+                    value={stats.today.toLocaleString('ar')}
+                    icon={ScrollText}
+                    tone="accent"
+                />
+                <StatCard
+                    label="تغييرات إعدادات"
+                    value={stats.settingsChanges.toLocaleString('ar')}
+                    icon={SlidersHorizontal}
+                    tone="info"
+                />
+                <StatCard
+                    label="تحويلات مزود"
+                    value={stats.failovers.toLocaleString('ar')}
+                    icon={ArrowLeftRight}
+                    tone="warning"
+                />
+                <StatCard
+                    label="محاولات فاشلة"
+                    value={stats.failures.toLocaleString('ar')}
+                    icon={AlertTriangle}
+                    tone={stats.failures > 0 ? 'danger' : 'success'}
+                />
+            </div>
 
             <Card>
                 <CardHeader
@@ -215,7 +277,7 @@ export default function Index({
                                         <th className="px-4 py-3 text-start font-medium">
                                             العملية
                                         </th>
-                                        <th className="px-4 py-3 text-start font-medium">القسم</th>
+                                        <th className="px-4 py-3 text-start font-medium">النوع</th>
                                         <th className="px-4 py-3 text-start font-medium">الموظف</th>
                                         <th className="px-4 py-3 text-start font-medium">الوقت</th>
                                         <th className="px-4 py-3 text-start font-medium">
@@ -238,11 +300,11 @@ export default function Index({
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3">
-                                                {entry.section === null ? (
-                                                    <span className="text-fg-subtle">—</span>
-                                                ) : (
-                                                    <Badge tone="neutral">{entry.section}</Badge>
-                                                )}
+                                                <span
+                                                    className={`inline-flex rounded-pill px-2.5 py-1 text-xs font-bold ${categoryClass(entry.category_tone)}`}
+                                                >
+                                                    {entry.category}
+                                                </span>
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="text-fg-default">{entry.actor}</div>
