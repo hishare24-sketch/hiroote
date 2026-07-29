@@ -196,7 +196,12 @@ class MawazinBridge
         }
 
         if ($response->status() === 429) {
-            return $this->failedLogin('تجاوز المشروع حدَّ محاولات الدخول — انتظر دقيقة ثم أعد الجلب.');
+            // رسالة المشروع تُقدَّم على رسالتنا: في موازين حارسان بمدّتين
+            // مختلفتين — حدُّ IP دقيقةً، وقفلُ الحساب بعد خمس إخفاقات ربعَ
+            // ساعة — ورسالته وحدها تعرف أيُّهما وقع وكم بقي منه. ونصٌّ عامّ
+            // يقول «انتظر دقيقة» يجعل المشغّل يعيد المحاولة فيطيل القفل.
+            return $this->failedLogin($this->serverMessage($response->json())
+                ?? 'تجاوز المشروع حدَّ محاولات الدخول — انتظر ثم أعد الجلب.');
         }
 
         if ($response->status() === 404) {
@@ -229,6 +234,23 @@ class MawazinBridge
             'قُبل الدخول ولم يحمل الرد رمزًا بأي من الأسماء المعروفة ('
             .implode(' · ', array_keys($body)).').',
         );
+    }
+
+    /**
+     * رسالة الخطأ كما أرسلها المشروع، إن أرسل واحدة صالحة للعرض.
+     *
+     * `message` في NestJS قد تكون نصًّا أو قائمةَ أخطاء تحقّق؛ والقائمة لا
+     * تُعرض للمشغّل فتُترك لرسالتنا.
+     */
+    private function serverMessage(mixed $body): ?string
+    {
+        if (! is_array($body)) {
+            return null;
+        }
+
+        $message = $body['message'] ?? null;
+
+        return is_string($message) && trim($message) !== '' ? $message : null;
     }
 
     /** @return array{token: null, error: string} */
