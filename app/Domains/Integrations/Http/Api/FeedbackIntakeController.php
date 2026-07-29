@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Integrations\Http\Api;
 
+use App\Domains\Knowledge\Actions\RecordKnowledgeGap;
 use App\Domains\Knowledge\Enums\FeedbackKind;
 use App\Domains\Knowledge\Enums\FeedbackSource;
-use App\Domains\Knowledge\Models\KnowledgeFeedback;
 use App\Domains\Knowledge\Models\KnowledgeScreen;
 use App\Domains\Projects\Models\Project;
 use App\Http\Controllers\Controller;
@@ -24,6 +24,8 @@ use Illuminate\Http\Request;
  */
 class FeedbackIntakeController extends Controller
 {
+    public function __construct(private readonly RecordKnowledgeGap $gaps) {}
+
     public function __invoke(Request $request): JsonResponse
     {
         $project = $request->attributes->get(AuthenticateProjectApiKey::PROJECT);
@@ -54,45 +56,21 @@ class FeedbackIntakeController extends Controller
             ], 404);
         }
 
-        $kind = FeedbackKind::from($validated['kind'] ?? FeedbackKind::Unanswered->value);
-
-        $existing = KnowledgeFeedback::query()
-            ->forProject($project)
-            ->where('screen_id', $screen->id)
-            ->where('body', $validated['body'])
-            ->open()
-            ->first();
-
-        if ($existing !== null) {
-            // العدّاد صغير (tinyint) فيُحدّ عند سقفه: رقمٌ يلتف إلى الصفر يقلب
-            // «تكرر كثيرًا» إلى «لم يتكرر».
-            $existing->forceFill([
-                'occurrences' => min($existing->occurrences + 1, 255),
-            ])->save();
-
-            return response()->json([
-                'id' => $existing->id,
-                'occurrences' => $existing->occurrences,
-                'created' => false,
-            ]);
-        }
-
-        $feedback = KnowledgeFeedback::query()->create([
-            'project_id' => $project->id,
-            'section_id' => $screen->section_id,
-            'screen_id' => $screen->id,
-            'kind' => $kind,
+        // قاعدة التكرار واحدة لكل من يرفع ثغرة — الجسر والـ Orchestrator معًا.
+        $result = $this->gaps->handle(
+            project: $project,
+            body: $validated['body'],
+            screen: $screen,
+            kind: FeedbackKind::from($validated['kind'] ?? FeedbackKind::Unanswered->value),
             // المصدر «مساعد» لا «دعم»: ما يأتي من الجسر إشارةٌ تحتاج تحققًا
             // ميدانيًا قبل أن يُبنى عليها تعديل.
-            'source' => FeedbackSource::Assistant,
-            'body' => $validated['body'],
-            'occurrences' => 1,
-        ]);
+            source: FeedbackSource::Assistant,
+        );
 
         return response()->json([
-            'id' => $feedback->id,
-            'occurrences' => 1,
-            'created' => true,
-        ], 201);
+            'id' => $result['feedback']->id,
+            'occurrences' => $result['feedback']->occurrences,
+            'created' => $result['created'],
+        ], $result['created'] ? 201 : 200);
     }
 }

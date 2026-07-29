@@ -9,6 +9,7 @@ use App\Domains\Assistants\Models\ProjectSection;
 use App\Domains\Knowledge\Enums\KnowledgeStatus;
 use App\Domains\Knowledge\Models\KnowledgeItem;
 use App\Domains\Knowledge\Models\KnowledgeScreen;
+use App\Domains\Orchestrator\DTOs\AssembledContext;
 use App\Domains\Orchestrator\DTOs\AssistantRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -27,6 +28,18 @@ class ContextAssembler
     private const MAX_ITEMS = 25;
 
     public function system(AssistantRequest $request): string
+    {
+        return $this->assemble($request)->system;
+    }
+
+    /**
+     * التعليمات، ومعها ما يلزم لتسجيل النتيجة بصدق.
+     *
+     * `hasReference` تُحسب هنا لا تُستنتج من نصّ الرد: من يقرأ الرد قد يظنّ
+     * اعتذارًا مهذّبًا جوابًا، ومن يبني التعليمات يعرف يقينًا هل كان في يد
+     * المساعد شيء.
+     */
+    public function assemble(AssistantRequest $request): AssembledContext
     {
         $project = $request->project;
         $parts = ["أنت مساعد «{$project->name}». أجب بالعربية، وبما في المرجع أدناه وحده."];
@@ -48,16 +61,23 @@ class ContextAssembler
             $parts[] = $this->screenBlock($screen);
         }
 
+        $hasReference = false;
+
         if ($section instanceof ProjectSection) {
             $parts[] = "## القسم\n{$section->name}: ".($section->description ?? 'بلا وصف.');
-            $parts[] = $this->knowledgeBlock($section, $request->lastUserMessage());
+            $parts[] = $this->knowledgeBlock($section, $request->lastUserMessage(), $hasReference);
         } else {
             $parts[] = '## المرجع'."\n".'لا معرفة معتمَدة لهذا الموضع. قل إنك لا تعرف بدل أن تخمّن.';
         }
 
         $parts[] = $this->levelBlock($request);
 
-        return implode("\n\n", array_filter($parts));
+        return new AssembledContext(
+            system: implode("\n\n", array_filter($parts)),
+            hasReference: $hasReference,
+            screen: $screen,
+            section: $section instanceof ProjectSection ? $section : null,
+        );
     }
 
     /** حدّ الرموز كما ضبطه المالك لهذا المستوى في هذا المشروع. */
@@ -104,7 +124,7 @@ class ContextAssembler
         return implode("\n", $lines);
     }
 
-    private function knowledgeBlock(ProjectSection $section, string $question): string
+    private function knowledgeBlock(ProjectSection $section, string $question, bool &$hasReference): string
     {
         $published = KnowledgeItem::query()
             ->where('project_id', $section->project_id)
@@ -118,6 +138,7 @@ class ContextAssembler
         }
 
         $items = $this->select($published, $question);
+        $hasReference = $items->isNotEmpty();
         $lines = ['## المرجع (منشور فقط)'];
 
         foreach ($items as $item) {

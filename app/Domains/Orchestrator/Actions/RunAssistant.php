@@ -9,7 +9,11 @@ use App\Domains\Analytics\Models\TokenUsageRecord;
 use App\Domains\Conversations\Enums\ConversationOutcome;
 use App\Domains\Conversations\Enums\MessageRole;
 use App\Domains\Conversations\Models\Conversation;
+use App\Domains\Knowledge\Actions\RecordKnowledgeGap;
+use App\Domains\Knowledge\Enums\FeedbackKind;
+use App\Domains\Knowledge\Enums\FeedbackSource;
 use App\Domains\Orchestrator\Contracts\AiDriver;
+use App\Domains\Orchestrator\DTOs\AssembledContext;
 use App\Domains\Orchestrator\DTOs\AssistantRequest;
 use App\Domains\Orchestrator\DTOs\DriverReply;
 use App\Domains\Orchestrator\DTOs\OrchestratedReply;
@@ -35,6 +39,7 @@ final readonly class RunAssistant
     public function __construct(
         private DriverRegistry $registry,
         private ContextAssembler $context,
+        private RecordKnowledgeGap $gaps,
     ) {}
 
     public function handle(AssistantRequest $request): OrchestratedReply
@@ -48,10 +53,14 @@ final readonly class RunAssistant
             return OrchestratedReply::failed('لا مزود نشط — فعّل واحدًا من شاشة المزودين.');
         }
 
-        $attempt = $this->attempt($request, $provider);
+        // تُبنى مرةً واحدة: التحويل يغيّر المزود لا المرجع، وإعادةُ بنائها تعني
+        // استعلامَ معرفةٍ ثانيًا لأجل النتيجة نفسها.
+        $context = $this->context->assemble($request);
+
+        $attempt = $this->attempt($request, $provider, $context);
 
         if ($attempt['reply']->ok) {
-            return $this->record($request, $attempt, false);
+            return $this->record($request, $attempt, false, $context);
         }
 
         // مرشّحٌ واحد لا سلسلة: الثاني يكشف عطل الأول، والثالث يضاعف الكلفة بلا
@@ -70,7 +79,7 @@ final readonly class RunAssistant
             );
         }
 
-        $second = $this->attempt($request, $fallback);
+        $second = $this->attempt($request, $fallback, $context);
 
         if (! $second['reply']->ok) {
             return OrchestratedReply::failed(
@@ -80,13 +89,13 @@ final readonly class RunAssistant
             );
         }
 
-        return $this->record($request, $second, true);
+        return $this->record($request, $second, true, $context);
     }
 
     /**
      * @return array{reply: DriverReply, provider: AiProvider, model: AiModel|null}
      */
-    private function attempt(AssistantRequest $request, AiProvider $provider): array
+    private function attempt(AssistantRequest $request, AiProvider $provider, AssembledContext $context): array
     {
         $driver = $this->registry->for($provider);
         $model = $provider->models()->where('is_enabled', true)->orderByDesc('is_default')->first();
@@ -122,7 +131,7 @@ final readonly class RunAssistant
                 $provider,
                 $model,
                 $credential->api_key,
-                $this->context->system($request),
+                $context->system,
                 $request->messages,
                 $this->context->maxTokens($request),
                 $this->context->temperature($request),
@@ -135,15 +144,24 @@ final readonly class RunAssistant
     /**
      * @param  array{reply: DriverReply, provider: AiProvider, model: AiModel|null}  $attempt
      */
-    private function record(AssistantRequest $request, array $attempt, bool $failedOver): OrchestratedReply
-    {
+    private function record(
+        AssistantRequest $request,
+        array $attempt,
+        bool $failedOver,
+        AssembledContext $context,
+    ): OrchestratedReply {
         $reply = $attempt['reply'];
         $provider = $attempt['provider'];
         $model = $attempt['model'];
         $cost = $this->cost($reply, $model);
-        $conversation = $this->conversation($request, $reply, $provider, $model, $cost);
+        $answered = $context->hasReference;
+        $conversation = $this->conversation($request, $reply, $provider, $model, $cost, $answered);
 
         $this->usage($request, $reply, $cost);
+
+        if (! $answered) {
+            $this->raiseGap($request, $context, $conversation->id);
+        }
 
         return OrchestratedReply::ok(
             $reply->text,
@@ -184,12 +202,39 @@ final readonly class RunAssistant
         );
     }
 
+    /**
+     * يرفع الثغرة إلى الطابور البشري — رصدًا لا حكمًا.
+     *
+     * المساعد أدرى الناس بأنه أجاب بلا مرجع، وسكوتُه عن ذلك يترك الثغرة تُكتشف
+     * حين يشتكي مستخدم، إن اشتكى. ولا يُرفع شيء عند سؤالٍ فارغ: صفٌّ بجسدٍ
+     * فارغ لا يقول لمحرِّر المعرفة ما ينقص.
+     */
+    private function raiseGap(AssistantRequest $request, AssembledContext $context, int $conversationId): void
+    {
+        $question = trim($request->lastUserMessage());
+
+        if (mb_strlen($question) < 3) {
+            return;
+        }
+
+        $this->gaps->handle(
+            project: $request->project,
+            body: $question,
+            screen: $context->screen,
+            section: $context->section,
+            kind: FeedbackKind::Unanswered,
+            source: FeedbackSource::Assistant,
+            conversationId: $conversationId,
+        );
+    }
+
     private function conversation(
         AssistantRequest $request,
         DriverReply $reply,
         AiProvider $provider,
         ?AiModel $model,
         ?float $cost,
+        bool $answered,
     ): Conversation {
         $conversation = Conversation::query()->updateOrCreate(
             [
@@ -205,7 +250,10 @@ final readonly class RunAssistant
                 'user_label' => $request->userLabel,
                 'external_user_id' => $request->externalUserId,
                 'level' => $request->level,
-                'outcome' => ConversationOutcome::Resolved,
+                // «تم الحل» تعني أن المساعد وجد ما يجيب به. مساعدٌ بلا مرجع
+                // أُمر أن يقول «لا أعرف»، وطاعتُه ليست حلًّا — وعدُّها حلًّا
+                // يرفع نسبةَ الحل عن معرفةٍ لم تُكتب بعد، وهي أكثر رقمٍ يُقرأ.
+                'outcome' => $answered ? ConversationOutcome::Resolved : ConversationOutcome::Ticket,
                 'message_count' => count($request->messages) + 1,
                 'total_tokens' => $reply->totalTokens(),
                 'cost' => number_format($cost ?? 0, 4, '.', ''),
