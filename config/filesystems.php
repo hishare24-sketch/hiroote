@@ -32,19 +32,31 @@ return [
 
     'disks' => [
 
+        /*
+         * القرص الخاص لا يُقدَّم عبر HTTP.
+         *
+         * كان يحمل `serve => true` وبلا `url`، فيسجّل لارافل `GET /storage/{path}`
+         * **له هو** — وهو نفس المسار الذي تُنشر عليه صور الشاشات من القرص العام.
+         * فحين يغيب الرابط الرمزي `public/storage` يصل الطلب إلى لارافل فيقرأه من
+         * `storage/app/private`، ويردّ ٤٠٣ لأن الخاص يشترط توقيعًا: الصورة تُرفع
+         * وتُحفظ وتظهر مكسورة، ولا شيء يقول لماذا.
+         */
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
 
+        // العام هو صاحب `/storage`: يُقدَّم بلا توقيع (visibility عامة)، فتعمل
+        // صور الشاشات مع الرابط الرمزي وبدونه.
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+            'serve' => true,
             'throw' => false,
             'report' => false,
         ],
