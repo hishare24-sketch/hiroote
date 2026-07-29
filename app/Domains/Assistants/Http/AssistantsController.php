@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace App\Domains\Assistants\Http;
 
 use App\Domains\Assistants\Actions\ProvisionAssistantDefaults;
+use App\Domains\Assistants\Actions\SaveChatPolicy;
 use App\Domains\Assistants\Actions\ToggleAssistantFunction;
 use App\Domains\Assistants\Actions\UpdateAssistantLevel;
 use App\Domains\Assistants\Actions\UpdateAssistantProfile;
 use App\Domains\Assistants\Enums\AssistantFunction;
+use App\Domains\Assistants\Enums\ChatChannelKind;
+use App\Domains\Assistants\Enums\ChatScope;
 use App\Domains\Assistants\Models\AssistantFunctionSetting;
 use App\Domains\Assistants\Models\AssistantLevelSetting;
 use App\Domains\Assistants\Models\AssistantProfile;
+use App\Domains\Assistants\Models\ProjectChatPolicy;
 use App\Domains\Conversations\Enums\AssistantLevel;
 use App\Domains\Projects\Services\CurrentProject;
 use App\Domains\Providers\Models\AiModel;
@@ -20,8 +24,11 @@ use App\Support\Enums\EnumPayload;
 use App\Support\Http\SystemStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 /**
  * شاشة إعدادات وسلوك المساعد — وثيقة 06 §12 و§13.
@@ -42,9 +49,46 @@ class AssistantsController extends Controller
 
         $profile = AssistantProfile::forProject($project);
 
+        $chat = ProjectChatPolicy::query()->forProject($project)->first();
+
         return Inertia::render('Assistants/Index', [
             'systemStatus' => SystemStatus::current(),
             'project' => ['id' => $project->id, 'name' => $project->name],
+            // مشروعٌ بلا إذن محفوظ يبدأ **مطفأً**: الشات يفتح قناةً بين بشرٍ
+            // وبشر، وافتراضُ السماح يفتحها بلا قرار من أحد.
+            'chat' => $chat === null ? [
+                'is_enabled' => false,
+                'channel_kinds' => [],
+                'scopes' => [],
+                'assistant_participates' => true,
+                'attachments_allowed' => false,
+                'retention_days' => 0,
+            ] : [
+                'is_enabled' => $chat->is_enabled,
+                'channel_kinds' => $chat->channel_kinds,
+                'scopes' => $chat->scopes,
+                'assistant_participates' => $chat->assistant_participates,
+                'attachments_allowed' => $chat->attachments_allowed,
+                'retention_days' => $chat->retention_days,
+            ],
+            'chatKinds' => array_map(
+                fn (ChatChannelKind $kind): array => [
+                    'value' => $kind->value,
+                    'label' => $kind->label(),
+                    'about' => $kind->about(),
+                    'human_to_human' => $kind->carriesHumanToHuman(),
+                ],
+                ChatChannelKind::cases(),
+            ),
+            'chatScopes' => array_map(
+                fn (ChatScope $scope): array => [
+                    'value' => $scope->value,
+                    'label' => $scope->label(),
+                    'about' => $scope->about(),
+                    'crosses_tenants' => $scope->crossesTenants(),
+                ],
+                ChatScope::cases(),
+            ),
             'levels' => AssistantLevelSetting::query()
                 ->forProject($project)
                 ->with('model:id,display_name')
@@ -157,6 +201,36 @@ class AssistantsController extends Controller
         $action->handle($this->current->require(), $function, $validated['enabled']);
 
         return back();
+    }
+
+    public function saveChatPolicy(Request $request, SaveChatPolicy $action): RedirectResponse
+    {
+        $data = $request->validate([
+            'is_enabled' => ['required', 'boolean'],
+            'channel_kinds' => ['array'],
+            'channel_kinds.*' => ['string', Rule::enum(ChatChannelKind::class)],
+            'scopes' => ['array'],
+            'scopes.*' => ['string', Rule::enum(ChatScope::class)],
+            'assistant_participates' => ['required', 'boolean'],
+            'attachments_allowed' => ['required', 'boolean'],
+            'retention_days' => ['required', 'integer', 'min:0', 'max:3650'],
+        ]);
+
+        try {
+            $action->handle(
+                $this->current->require(),
+                (bool) $data['is_enabled'],
+                array_values($data['channel_kinds'] ?? []),
+                array_values($data['scopes'] ?? []),
+                (bool) $data['assistant_participates'],
+                (bool) $data['attachments_allowed'],
+                (int) $data['retention_days'],
+            );
+        } catch (RuntimeException $exception) {
+            throw ValidationException::withMessages(['is_enabled' => $exception->getMessage()]);
+        }
+
+        return back()->with('success', 'حُفظ إذن الشات.');
     }
 
     /** @return list<array<string, mixed>> */

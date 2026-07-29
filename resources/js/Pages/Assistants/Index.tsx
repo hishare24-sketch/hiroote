@@ -8,6 +8,8 @@ import type {
     AssistantProfile,
     SelectOptionPayload,
 } from '@/types/assistants';
+import type { ChatKindOption, ChatPolicy, ChatScopeOption } from './ChatPolicyCard';
+import { ChatPolicyCard } from './ChatPolicyCard';
 import { AdminLayout } from '@/Layouts/AdminLayout';
 import { Alert } from '@/Components/ui/Alert';
 import { Badge } from '@/Components/ui/Badge';
@@ -29,6 +31,9 @@ interface Props {
     functions: AssistantFunctionToggle[];
     models: SelectOptionPayload[];
     levelOptions: SelectOptionPayload[];
+    chat: ChatPolicy;
+    chatKinds: ChatKindOption[];
+    chatScopes: ChatScopeOption[];
 }
 
 /** شاشة إعدادات وسلوك المساعد — وثيقة 06 §12 و§13. */
@@ -40,6 +45,9 @@ export default function AssistantsIndex({
     functions,
     models,
     levelOptions,
+    chat,
+    chatKinds,
+    chatScopes,
 }: Props) {
     const { can } = usePermissions();
     const manage = can('assistants.manage');
@@ -99,6 +107,13 @@ export default function AssistantsIndex({
                     </CardBody>
                 </Card>
             </div>
+
+            <ChatPolicyCard
+                policy={chat}
+                kinds={chatKinds}
+                scopes={chatScopes}
+                canManage={manage}
+            />
 
             {editing === null ? null : (
                 <LevelEditor

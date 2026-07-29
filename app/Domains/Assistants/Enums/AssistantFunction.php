@@ -45,7 +45,7 @@ enum AssistantFunction: string implements PresentableEnum
             self::HumanHandoff => 'التحويل البشري',
             self::EscalationEmail => 'إرسال بريد التصعيد',
             self::ShowRelatedScreens => 'عرض روابط وشاشات مرتبطة بالإجابة',
-            self::ChatZoom => 'نافذة الشات الكاملة',
+            self::ChatZoom => 'الشات الكامل (المساعد والأعضاء والمجموعات)',
         };
     }
 
@@ -65,7 +65,7 @@ enum AssistantFunction: string implements PresentableEnum
             self::HumanHandoff => 'تسليم المحادثة إلى موظف بشري.',
             self::EscalationEmail => 'إشعار المسؤولين بالبريد عند التصعيد الحرج.',
             self::ShowRelatedScreens => 'إرفاق روابط شاشات التطبيق بالإجابة.',
-            self::ChatZoom => 'شات المساعد والأعضاء والمجموعات بنمط موازين: فقاعة عائمة بعدّاد غير مقروء، وغرفة قابلة للسحب والتحجيم وملء الشاشة.',
+            self::ChatZoom => 'يجيز للمشروع فتح شات كامل — المساعد والأعضاء والمجموعات. **الواجهة يبنيها المشروع**؛ هاي روت يحكم إذنه ودوائره من بطاقة «حوكمة الشات»، والمشروع يقرأها من جسر الوارد.',
         };
     }
 
@@ -103,9 +103,15 @@ enum AssistantFunction: string implements PresentableEnum
      * يبقى السويتش موقوفًا حتى تُبنى الميزة: سويتش مفعّل على ما لا وجود له
      * يَعِد المشغّل بسلوك لن يراه.
      */
+    /**
+     * وظيفةٌ مُعلَنة ولم يُبنَ لها مسار.
+     *
+     * فارغةٌ اليوم: `ChatZoom` كانت هنا حتى بُنيت حوكمتها، وما بقي منها —
+     * واجهةُ الشات نفسها — يقع في المشروع لا في هذه اللوحة، فليس وعدًا هنا.
+     */
     public function awaitsImplementation(): bool
     {
-        return $this === self::ChatZoom;
+        return false;
     }
 
     public function defaultEnabled(): bool

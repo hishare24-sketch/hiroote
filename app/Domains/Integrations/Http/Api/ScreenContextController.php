@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Integrations\Http\Api;
 
+use App\Domains\Assistants\Models\ProjectChatPolicy;
 use App\Domains\Assistants\Models\ProjectSection;
 use App\Domains\Knowledge\Enums\KnowledgeStatus;
 use App\Domains\Knowledge\Models\KnowledgeItem;
@@ -76,7 +77,34 @@ class ScreenContextController extends Controller
             'knowledge' => $section instanceof ProjectSection
                 ? $this->knowledge($project, $section)
                 : [],
+            // إذن الشات يُقرأ من هنا لا يُعاد تعريفه في المشروع: مصدرٌ واحد
+            // للإذن يعني أن إطفاء المالك يسري فورًا، وأن نسختين لا تتباعدان.
+            'chat' => $this->chat($project),
         ]);
+    }
+
+    /**
+     * إذن الشات كما ضبطه المالك — لا رسائل ولا هويات.
+     *
+     * @return array<string, mixed>
+     */
+    private function chat(Project $project): array
+    {
+        $policy = ProjectChatPolicy::query()->forProject($project)->first();
+
+        if ($policy === null) {
+            return ['enabled' => false, 'kinds' => [], 'scopes' => []];
+        }
+
+        return [
+            'enabled' => $policy->is_enabled,
+            'kinds' => $policy->channel_kinds,
+            'scopes' => $policy->scopes,
+            'assistant_participates' => $policy->assistant_participates,
+            'attachments_allowed' => $policy->attachments_allowed,
+            // صفرٌ يعني «بلا حدّ» لا «لا تحفظ» — يُرسل null كي لا يُقرأ صفرًا.
+            'retention_days' => $policy->keepsForever() ? null : $policy->retention_days,
+        ];
     }
 
     /**

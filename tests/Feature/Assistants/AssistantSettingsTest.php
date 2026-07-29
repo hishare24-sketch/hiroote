@@ -145,8 +145,26 @@ class AssistantSettingsTest extends TestCase
         $this->assertFalse($map[AssistantFunction::AnalyzeAttachments->value]);
     }
 
+    /**
+     * لا وظيفةَ مُعلَنة بلا مسار.
+     *
+     * كانت `ChatZoom` تُرفض بـ٤٢٢ لأنها وعدٌ بلا تنفيذ؛ وقد بُنيت حوكمتها في
+     * هذه اللوحة فصارت تُفعَّل. والحارس في المتحكّم يبقى للوظيفة التالية التي
+     * تُعلَن قبل أن تُبنى — **تفعيلٌ قبل التنفيذ يَعِد بسلوك لا وجود له**.
+     */
     #[Test]
-    public function the_unimplemented_function_cannot_be_switched_on(): void
+    public function no_declared_function_is_offered_before_it_has_a_path(): void
+    {
+        foreach (AssistantFunction::cases() as $function) {
+            $this->assertFalse(
+                $function->awaitsImplementation(),
+                "«{$function->label()}» معروضة في الشاشة وبلا مسار.",
+            );
+        }
+    }
+
+    #[Test]
+    public function the_chat_capability_can_be_switched_on_now_that_its_governance_exists(): void
     {
         $manager = User::factory()->role(Role::AiManager)->create();
         $this->actingAs($manager)->get('/assistants');
@@ -156,9 +174,9 @@ class AssistantSettingsTest extends TestCase
                 'key' => AssistantFunction::ChatZoom->value,
                 'enabled' => true,
             ])
-            ->assertStatus(422);
+            ->assertRedirect();
 
-        $this->assertFalse(AssistantFunctionSetting::mapFor($this->project)[AssistantFunction::ChatZoom->value]);
+        $this->assertTrue(AssistantFunctionSetting::mapFor($this->project)[AssistantFunction::ChatZoom->value]);
     }
 
     #[Test]

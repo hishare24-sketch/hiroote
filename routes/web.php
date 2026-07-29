@@ -80,6 +80,8 @@ Route::middleware('auth')->group(function (): void {
             ->name('assistants.profile.update');
         Route::post('/assistants/functions', [AssistantsController::class, 'toggleFunction'])
             ->name('assistants.functions.toggle');
+        Route::put('/assistants/chat', [AssistantsController::class, 'saveChatPolicy'])
+            ->name('assistants.chat.save');
     });
 
     Route::get('/bridge', [BridgeController::class, 'index'])
