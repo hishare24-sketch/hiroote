@@ -58,11 +58,10 @@ class PlannedScreensTest extends TestCase
         $admin = User::factory()->role(Role::SystemAdmin)->create();
 
         $this->actingAs($admin)
-            ->get('/knowledge')
+            ->get('/alerts')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Planned/Index')
-                ->where('screen.phase', 3)
-                ->where('screen.title', 'قاعدة المعرفة'));
+                ->where('screen.title', 'التنبيهات'));
     }
 }

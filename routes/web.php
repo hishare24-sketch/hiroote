@@ -7,6 +7,7 @@ use App\Domains\Assistants\Http\AssistantsController;
 use App\Domains\Assistants\Http\SectionsController;
 use App\Domains\Conversations\Http\ConversationsController;
 use App\Domains\Conversations\Http\EscalationsController;
+use App\Domains\Knowledge\Http\KnowledgeController;
 use App\Domains\Projects\Http\ProjectsController;
 use App\Domains\Projects\Http\SwitchProjectController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -85,10 +86,28 @@ Route::middleware('auth')->group(function (): void {
             ->name('integrations.sections.toggle');
     });
 
+    Route::middleware('permission:knowledge.view')->group(function (): void {
+        Route::get('/knowledge', [KnowledgeController::class, 'index'])->name('knowledge.index');
+        Route::get('/knowledge/sections/{section}', [KnowledgeController::class, 'show'])
+            ->name('knowledge.sections.show');
+        Route::get('/knowledge/items/{item}/versions', [KnowledgeController::class, 'versions'])
+            ->name('knowledge.items.versions');
+    });
+
+    Route::middleware('permission:knowledge.manage')->group(function (): void {
+        Route::post('/knowledge/sections/{section}/items', [KnowledgeController::class, 'storeItem'])
+            ->name('knowledge.items.store');
+        Route::put('/knowledge/items/{item}', [KnowledgeController::class, 'updateItem'])
+            ->name('knowledge.items.update');
+        Route::post('/knowledge/items/{item}/versions/{version}/restore', [KnowledgeController::class, 'restore'])
+            ->name('knowledge.versions.restore');
+        Route::post('/knowledge/feedback/{feedback}', [KnowledgeController::class, 'resolveFeedback'])
+            ->name('knowledge.feedback.resolve');
+    });
+
     // الشاشات المخططة لمراحل لاحقة — تعرض نطاقها بدل خطأ 404، ويستبدل كل
     // مسار بمتحكمه الحقيقي عند تنفيذ مرحلته.
     $planned = [
-        'knowledge' => 'knowledge.view',
         'alerts' => 'alerts.view',
         'users' => 'users.view',
     ];

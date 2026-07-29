@@ -22,43 +22,43 @@ class SectionsSeeder extends Seeder
     /**
      * أقسام Hi-Share الستة عشر — وثيقة 06 §14.
      *
-     * @var list<array{name: string, caps?: array<string, bool>}>
+     * @var list<array{name: string, about: string, caps?: array<string, bool>}>
      */
     private const HI_SHARE = [
-        ['name' => 'الحساب والملف الشخصي', 'caps' => ['execute_action' => true]],
-        ['name' => 'العضويات'],
-        ['name' => 'الحملات', 'caps' => ['read_files' => true]],
-        ['name' => 'المساحات الإعلانية'],
-        ['name' => 'المشاركات', 'caps' => ['read_files' => true]],
-        ['name' => 'المحتوى والتوثيق', 'caps' => ['read_files' => true]],
-        ['name' => 'المشاهدات', 'caps' => ['create_ticket' => false]],
-        ['name' => 'القسائم'],
+        ['name' => 'الحساب والملف الشخصي', 'about' => 'البيانات الشخصية والتوثيق وإعدادات الحساب.', 'caps' => ['execute_action' => true]],
+        ['name' => 'العضويات', 'about' => 'خطط العضوية ومزاياها وتجديدها.'],
+        ['name' => 'الحملات', 'about' => 'شروط الحملات والانضمام إليها ومكافآتها.', 'caps' => ['read_files' => true]],
+        ['name' => 'المساحات الإعلانية', 'about' => 'عرض المساحات وحجزها وأسعارها.'],
+        ['name' => 'المشاركات', 'about' => 'رفع المشاركات وتوثيقها ومتابعة حالتها.', 'caps' => ['read_files' => true]],
+        ['name' => 'المحتوى والتوثيق', 'about' => 'معايير المحتوى وأسباب القبول والرفض.', 'caps' => ['read_files' => true]],
+        ['name' => 'المشاهدات', 'about' => 'احتساب المشاهدات ومصادرها ودقّتها.', 'caps' => ['create_ticket' => false]],
+        ['name' => 'القسائم', 'about' => 'إصدار القسائم والتحقق منها وصلاحيتها.'],
         // المال لا يُنفَّذ فيه إجراء تلقائي — يُحوَّل بشريًا (وثيقة 06 §10).
-        ['name' => 'المحفظة', 'caps' => ['execute_action' => false, 'suggest_action' => false]],
-        ['name' => 'السحب والتحويلات', 'caps' => ['execute_action' => false, 'suggest_action' => false]],
-        ['name' => 'الاعتراضات', 'caps' => ['execute_action' => false]],
-        ['name' => 'الإشعارات', 'caps' => ['human_handoff' => false]],
-        ['name' => 'الدعم الفني', 'caps' => ['read_files' => true]],
-        ['name' => 'الوكلاء والمسوقون'],
-        ['name' => 'الإعدادات', 'caps' => ['execute_action' => true]],
+        ['name' => 'المحفظة', 'about' => 'الرصيد وحركاته والأرباح ومواعيد صرفها.', 'caps' => ['execute_action' => false, 'suggest_action' => false]],
+        ['name' => 'السحب والتحويلات', 'about' => 'طلبات السحب والحسابات البنكية ومددها.', 'caps' => ['execute_action' => false, 'suggest_action' => false]],
+        ['name' => 'الاعتراضات', 'about' => 'تقديم الاعتراض ومساره ومدة البتّ فيه.', 'caps' => ['execute_action' => false]],
+        ['name' => 'الإشعارات', 'about' => 'أنواع الإشعارات وضبط تفضيلاتها.', 'caps' => ['human_handoff' => false]],
+        ['name' => 'الدعم الفني', 'about' => 'قنوات الدعم وأوقاته وأولويات التذاكر.', 'caps' => ['read_files' => true]],
+        ['name' => 'الوكلاء والمسوقون', 'about' => 'برنامج الوكلاء وعمولاته وشروطه.'],
+        ['name' => 'الإعدادات', 'about' => 'إعدادات التطبيق واللغة والخصوصية.', 'caps' => ['execute_action' => true]],
         // السياسات معرفة تُقرأ ولا بيانات تُستدعى.
-        ['name' => 'السياسات والشروط', 'caps' => ['api_call' => false, 'show_data' => false, 'create_ticket' => false]],
+        ['name' => 'السياسات والشروط', 'about' => 'شروط الاستخدام وسياسة الخصوصية.', 'caps' => ['api_call' => false, 'show_data' => false, 'create_ticket' => false]],
     ];
 
     /**
      * أقسام موازين — طبيعة مختلفة تمامًا: محاسبة لا مشاركات.
      *
-     * @var list<array{name: string, caps?: array<string, bool>}>
+     * @var list<array{name: string, about: string, caps?: array<string, bool>}>
      */
     private const MAWAZIN = [
-        ['name' => 'المشاريع'],
-        ['name' => 'الدفتر والقيود', 'caps' => ['execute_action' => false, 'suggest_action' => false]],
-        ['name' => 'المحافظ', 'caps' => ['execute_action' => false]],
-        ['name' => 'الفواتير', 'caps' => ['read_files' => true]],
-        ['name' => 'الاشتراكات'],
-        ['name' => 'التقارير المالية', 'caps' => ['create_ticket' => false]],
-        ['name' => 'الأعضاء والفرق'],
-        ['name' => 'الدعم', 'caps' => ['read_files' => true]],
+        ['name' => 'المشاريع', 'about' => 'إنشاء المشاريع المحاسبية وإدارتها.'],
+        ['name' => 'الدفتر والقيود', 'about' => 'القيود المحاسبية وميزان المراجعة.', 'caps' => ['execute_action' => false, 'suggest_action' => false]],
+        ['name' => 'المحافظ', 'about' => 'أرصدة المحافظ وحركاتها وتسوياتها.', 'caps' => ['execute_action' => false]],
+        ['name' => 'الفواتير', 'about' => 'إصدار الفواتير وتحصيلها وأرشفتها.', 'caps' => ['read_files' => true]],
+        ['name' => 'الاشتراكات', 'about' => 'خطط الاشتراك وتجديدها وإلغاؤها.'],
+        ['name' => 'التقارير المالية', 'about' => 'التقارير الدورية وتصديرها وقراءتها.', 'caps' => ['create_ticket' => false]],
+        ['name' => 'الأعضاء والفرق', 'about' => 'أعضاء المشروع وأدوارهم وصلاحياتهم.'],
+        ['name' => 'الدعم', 'about' => 'قنوات الدعم وأوقات الاستجابة.', 'caps' => ['read_files' => true]],
     ];
 
     public function __construct(private readonly ProvisionAssistantDefaults $provision) {}
@@ -80,6 +80,7 @@ class SectionsSeeder extends Seeder
                     [
                         ...$this->capabilities($section['caps'] ?? []),
                         'name' => $section['name'],
+                        'description' => $section['about'],
                         'sort_order' => $index + 1,
                     ],
                 );

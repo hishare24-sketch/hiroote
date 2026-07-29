@@ -23,9 +23,9 @@ class DomainServiceProvider extends ServiceProvider
         // Projects أولًا: هجراته تنشئ الجدول الذي تشير إليه بقية المجالات.
         'Projects',
         'Assistants',
+        'Knowledge',
         'Providers',
         'Conversations',
-        'Knowledge',
         'Integrations',
         'Analytics',
         'Alerts',
