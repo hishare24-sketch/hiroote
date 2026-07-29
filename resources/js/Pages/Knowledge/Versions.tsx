@@ -27,7 +27,9 @@ export default function KnowledgeVersions({ systemStatus, item, versions }: Prop
     const [left, setLeft] = useState<number>(versions[1]?.version ?? versions[0]?.version ?? 1);
     const [right, setRight] = useState<number>(versions[0]?.version ?? 1);
 
-    const older = versions.find((version) => version.version === Math.min(left, right));
+    // إصدار واحد لا يُقارن بنفسه — تُعرض النسخة وحدها بدل لوحتين متطابقتين.
+    const single = versions.length < 2;
+    const older = single ? undefined : versions.find((v) => v.version === Math.min(left, right));
     const newer = versions.find((version) => version.version === Math.max(left, right));
 
     return (
@@ -87,34 +89,38 @@ export default function KnowledgeVersions({ systemStatus, item, versions }: Prop
                                     </p>
 
                                     <div className="mt-1 flex flex-wrap gap-1.5">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setLeft(version.version);
-                                            }}
-                                            className={cn(
-                                                'rounded-pill px-2.5 py-1 text-micro font-bold',
-                                                left === version.version
-                                                    ? 'bg-accent text-on-accent'
-                                                    : 'bg-surface-sunken text-fg-muted hover:text-fg-default',
-                                            )}
-                                        >
-                                            قارن كأقدم
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setRight(version.version);
-                                            }}
-                                            className={cn(
-                                                'rounded-pill px-2.5 py-1 text-micro font-bold',
-                                                right === version.version
-                                                    ? 'bg-accent text-on-accent'
-                                                    : 'bg-surface-sunken text-fg-muted hover:text-fg-default',
-                                            )}
-                                        >
-                                            قارن كأحدث
-                                        </button>
+                                        {single ? null : (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setLeft(version.version);
+                                                    }}
+                                                    className={cn(
+                                                        'rounded-pill px-2.5 py-1 text-micro font-bold',
+                                                        left === version.version
+                                                            ? 'bg-accent text-on-accent'
+                                                            : 'bg-surface-sunken text-fg-muted hover:text-fg-default',
+                                                    )}
+                                                >
+                                                    قارن كأقدم
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setRight(version.version);
+                                                    }}
+                                                    className={cn(
+                                                        'rounded-pill px-2.5 py-1 text-micro font-bold',
+                                                        right === version.version
+                                                            ? 'bg-accent text-on-accent'
+                                                            : 'bg-surface-sunken text-fg-muted hover:text-fg-default',
+                                                    )}
+                                                >
+                                                    قارن كأحدث
+                                                </button>
+                                            </>
+                                        )}
 
                                         {manage && version.version !== item.version ? (
                                             <Button
@@ -141,16 +147,20 @@ export default function KnowledgeVersions({ systemStatus, item, versions }: Prop
 
                 <Card>
                     <CardHeader
-                        title="المقارنة"
+                        title={single ? 'النص الحالي' : 'المقارنة'}
                         description={
-                            older === undefined || newer === undefined
-                                ? 'اختر إصدارين'
-                                : `الإصدار ${formatNumber(older.version)} مقابل ${formatNumber(newer.version)}`
+                            single
+                                ? 'لا مقارنة — إصدار واحد فقط'
+                                : older === undefined || newer === undefined
+                                  ? 'اختر إصدارين'
+                                  : `الإصدار ${formatNumber(older.version)} مقابل ${formatNumber(newer.version)}`
                         }
                     />
                     <CardBody>
-                        {older === undefined || newer === undefined ? (
+                        {newer === undefined ? (
                             <p className="text-body text-fg-muted">اختر إصدارين من السجل.</p>
+                        ) : older === undefined ? (
+                            <VersionPane version={newer} label="الوحيد" />
                         ) : (
                             <div className="grid gap-4 md:grid-cols-2">
                                 <VersionPane version={older} label="الأقدم" />
