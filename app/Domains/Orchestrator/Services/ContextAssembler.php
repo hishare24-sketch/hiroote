@@ -10,6 +10,8 @@ use App\Domains\Knowledge\Enums\KnowledgeStatus;
 use App\Domains\Knowledge\Models\KnowledgeItem;
 use App\Domains\Knowledge\Models\KnowledgeScreen;
 use App\Domains\Orchestrator\DTOs\AssistantRequest;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * يبني تعليمات المساعد من معرفة المشروع — خادميًّا لا من العميل.
@@ -48,7 +50,7 @@ class ContextAssembler
 
         if ($section instanceof ProjectSection) {
             $parts[] = "## القسم\n{$section->name}: ".($section->description ?? 'بلا وصف.');
-            $parts[] = $this->knowledgeBlock($section);
+            $parts[] = $this->knowledgeBlock($section, $request->lastUserMessage());
         } else {
             $parts[] = '## المرجع'."\n".'لا معرفة معتمَدة لهذا الموضع. قل إنك لا تعرف بدل أن تخمّن.';
         }
@@ -102,27 +104,91 @@ class ContextAssembler
         return implode("\n", $lines);
     }
 
-    private function knowledgeBlock(ProjectSection $section): string
+    private function knowledgeBlock(ProjectSection $section, string $question): string
     {
-        $items = KnowledgeItem::query()
+        $published = KnowledgeItem::query()
             ->where('project_id', $section->project_id)
             ->where('section_id', $section->id)
-            ->where('status', KnowledgeStatus::Published->value)
-            ->orderByDesc('updated_at')
-            ->limit(self::MAX_ITEMS)
-            ->get();
+            ->where('status', KnowledgeStatus::Published->value);
 
-        if ($items->isEmpty()) {
+        $total = (clone $published)->count();
+
+        if ($total === 0) {
             return "## المرجع\nلا معرفة منشورة لهذا القسم. قل إنك لا تعرف بدل أن تخمّن.";
         }
 
+        $items = $this->select($published, $question);
         $lines = ['## المرجع (منشور فقط)'];
 
         foreach ($items as $item) {
             $lines[] = "### {$item->title}\n{$item->body}";
         }
 
+        // الاقتطاع يُعلَن للمساعد نفسه: مرجعٌ ناقص يظنّه المساعد كاملًا يجعله
+        // ينفي وجود ما هو منشور فعلًا، فيُقرأ نفيُه حكمًا لا حدَّ علمٍ.
+        if ($total > $items->count()) {
+            $lines[] = "> المرجع مقتطع: أمامك {$items->count()} من {$total} عنصرًا، اختيرت بأقربها إلى السؤال. "
+                .'إن لم تجد الجواب فقل إنك لا تراه في مرجعك، ولا تنفِ وجوده.';
+        }
+
         return implode("\n\n", $lines);
+    }
+
+    /**
+     * أقرب العناصر إلى السؤال أولًا، ثم الأحدث لملء ما بقي.
+     *
+     * الأحدثُ وحده اختيارٌ بلا علاقة بالسؤال: قسمٌ فيه أربعون عنصرًا يُسقط
+     * خمسة عشر منها صامتًا، فيقول المساعد «لا أعرف» عن معرفةٍ منشورة.
+     *
+     * @param  Builder<KnowledgeItem>  $published
+     * @return Collection<int, KnowledgeItem>
+     */
+    private function select(Builder $published, string $question): Collection
+    {
+        $terms = $this->terms($question);
+
+        $matched = $terms === []
+            ? collect()
+            : (clone $published)
+                ->where(function ($query) use ($terms): void {
+                    foreach ($terms as $term) {
+                        $query->orWhere('title', 'ilike', "%{$term}%")
+                            ->orWhere('summary', 'ilike', "%{$term}%")
+                            ->orWhere('body', 'ilike', "%{$term}%");
+                    }
+                })
+                ->orderByDesc('updated_at')
+                ->limit(self::MAX_ITEMS)
+                ->get();
+
+        $remaining = self::MAX_ITEMS - $matched->count();
+
+        if ($remaining <= 0) {
+            return $matched;
+        }
+
+        $filler = (clone $published)
+            ->whereNotIn('id', $matched->pluck('id')->all())
+            ->orderByDesc('updated_at')
+            ->limit($remaining)
+            ->get();
+
+        return $matched->concat($filler);
+    }
+
+    /**
+     * كلمات السؤال الصالحة للبحث.
+     *
+     * الحروف القصيرة تطابق كل شيء فلا تميّز، والكثرة تحوّل الاختيار إلى
+     * «الكل» فتعود المشكلة. ثمانيةٌ بطول ثلاثة فأكثر حدٌّ عمليّ.
+     *
+     * @return list<string>
+     */
+    private function terms(string $question): array
+    {
+        preg_match_all('/[\p{Arabic}\p{Latin}\d]{3,}/u', $question, $matches);
+
+        return array_slice(array_values(array_unique($matches[0])), 0, 8);
     }
 
     private function levelBlock(AssistantRequest $request): string

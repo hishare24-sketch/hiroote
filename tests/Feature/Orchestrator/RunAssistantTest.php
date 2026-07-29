@@ -214,6 +214,57 @@ class RunAssistantTest extends TestCase
         $this->assertStringNotContainsString('مسودة لم تُعتمد', $system);
     }
 
+    #[Test]
+    public function knowledge_is_chosen_by_the_question_not_by_recency(): void
+    {
+        // قسمٌ يفيض عن سقف المرجع: الأحدثُ وحده يُسقط ما يجيب السؤال صامتًا،
+        // فيقول المساعد «لا أعرف» عن معرفةٍ منشورة.
+        $section = ProjectSection::query()
+            ->where('project_id', $this->project->id)
+            ->where('name', 'المالية')
+            ->firstOrFail();
+
+        // العنصر الذي يجيب — أقدمُ الجميع.
+        KnowledgeItem::query()->create([
+            'project_id' => $this->project->id,
+            'section_id' => $section->id,
+            'title' => 'حدّ التحويل بين المشاريع',
+            'kind' => KnowledgeKind::Faq,
+            'status' => KnowledgeStatus::Published,
+            'body' => 'الحدّ الأعلى للتحويل بين المشاريع خمسون ألفًا في اليوم.',
+            'updated_at' => now()->subYear(),
+        ]);
+
+        // ثلاثون عنصرًا أحدث منه، لا علاقة لها بالسؤال.
+        for ($i = 0; $i < 30; $i++) {
+            KnowledgeItem::query()->create([
+                'project_id' => $this->project->id,
+                'section_id' => $section->id,
+                'title' => "عنصر حشو {$i}",
+                'kind' => KnowledgeKind::Faq,
+                'status' => KnowledgeStatus::Published,
+                'body' => 'نصٌّ لا صلة له بالسؤال.',
+            ]);
+        }
+
+        $this->provider();
+        Http::fake([self::ENDPOINT => $this->anthropicReply()]);
+
+        app(RunAssistant::class)->handle(new AssistantRequest(
+            project: $this->project,
+            messages: [['role' => 'user', 'content' => 'ما حدّ التحويل بين المشاريع؟']],
+            screenKey: 'finance-page',
+            reference: 'relevance-1',
+        ));
+
+        $system = (string) (Http::recorded()[0][0]->data()['system'] ?? '');
+
+        $this->assertStringContainsString('حدّ التحويل بين المشاريع', $system);
+        // والاقتطاع يُعلَن: مرجعٌ ناقص يظنّه المساعد كاملًا يجعله ينفي وجود
+        // ما هو منشور فعلًا.
+        $this->assertStringContainsString('المرجع مقتطع', $system);
+    }
+
     private function request(): AssistantRequest
     {
         return new AssistantRequest(
