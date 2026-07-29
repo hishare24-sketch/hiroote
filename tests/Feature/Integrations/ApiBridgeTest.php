@@ -78,6 +78,24 @@ class ApiBridgeTest extends TestCase
     }
 
     #[Test]
+    public function the_rate_limit_counts_the_key_not_the_address(): void
+    {
+        /*
+         * خمسة وعشرون نداءً: تحت حدّ المفتاح (١٢٠) وفوق حدّ العنوان (٢٠).
+         *
+         * لارافل يرتّب الوسائط بأولويّته لا بترتيب كتابتها، فكان `ThrottleRequests`
+         * يسبق مصادقة المفتاح، فيقرأ المحدِّدُ مفتاحًا لم يُصادَق بعدُ ويسقط إلى
+         * حدّ العنوان. ومشروعٌ خلف بوابة واحدة يبدو عميلًا واحدًا، فيخنقه أنشطُ
+         * مستخدميه — وهو بالضبط ما وُضع الحدُّ على المفتاح لتفاديه.
+         */
+        for ($attempt = 0; $attempt < 25; $attempt++) {
+            $this->withToken($this->token)
+                ->getJson('/api/v1/context?screen=wallet.withdraw')
+                ->assertOk();
+        }
+    }
+
+    #[Test]
     public function a_key_reaches_only_its_own_project(): void
     {
         // المشروع يُشتقّ من المفتاح لا من الطلب — وهذا ما يمنع سؤال مشروع بمفتاح

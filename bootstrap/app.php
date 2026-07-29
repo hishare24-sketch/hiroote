@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\AuthenticateProjectApiKey;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolveCurrentProject;
@@ -12,6 +13,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -35,6 +37,19 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => EnsurePermission::class,
         ]);
+
+        /*
+         * مصادقة المفتاح تسبق الخنق.
+         *
+         * لارافل يرتّب وسائط المسار بأولويّته لا بترتيب كتابتها، و`ThrottleRequests`
+         * في قائمته سلفًا فيسبق أي وسيط مخصّص. فكان محدِّد `api-bridge` يقرأ
+         * المفتاح ولا يجده — إذ لم يُصادَق بعد — فيسقط إلى **٢٠ طلبًا لكل عنوان
+         * شبكة** بدل ١٢٠ لكل مفتاح. أي أن مشروعًا خلف بوابة واحدة يخنقه أنشطُ
+         * مستخدميه، وهو بالضبط ما وُضع الحدُّ على المفتاح لتفاديه.
+         *
+         * كشفه اختبارٌ يسأل عن ٢٣ شاشة في نداء واحد فسقط عند الحادي والعشرين.
+         */
+        $middleware->prependToPriorityList(ThrottleRequests::class, AuthenticateProjectApiKey::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (Throwable $e, Request $request) {

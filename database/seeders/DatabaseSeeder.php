@@ -32,6 +32,8 @@ class DatabaseSeeder extends Seeder
         $this->call(ProjectsSeeder::class);
         $this->call(ProvidersSeeder::class);
         $this->call(SectionsSeeder::class);
+        // شاشات موازين بمفاتيحها: بلا هذه لا يجد جسر الوارد ما يجيب به.
+        $this->call(MawazinScreensSeeder::class);
         $this->call(DemoDataSeeder::class);
         $this->call(KnowledgeSeeder::class);
         // بعد الجميع: قواعد التنبيه تُقيَّم على البيانات المزروعة قبلها.
