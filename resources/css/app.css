@@ -1,16 +1,18 @@
 @import 'tailwindcss';
 
-/* الخط العربي — IBM Plex Sans Arabic مستضاف محليًا (لا CDN، يعمل دون إنترنت).
- * صُمم لواجهات الاستخدام ويقترن بـ IBM Plex Sans اللاتيني، فتظهر الأسماء
- * المختلطة مثل «OpenAI — GPT-5.1» بنفس النَّفَس البصري. */
+/* الخط — Cairo كما في موازين، مستضاف محليًا (لا CDN، يعمل دون إنترنت). */
+@import '@fontsource/cairo/arabic-400.css';
+@import '@fontsource/cairo/arabic-500.css';
+@import '@fontsource/cairo/arabic-600.css';
+@import '@fontsource/cairo/arabic-700.css';
+@import '@fontsource/cairo/arabic-800.css';
+@import '@fontsource/cairo/latin-400.css';
+@import '@fontsource/cairo/latin-500.css';
+@import '@fontsource/cairo/latin-600.css';
+@import '@fontsource/cairo/latin-700.css';
+@import '@fontsource/cairo/latin-800.css';
 @import '@fontsource/ibm-plex-sans-arabic/arabic-400.css';
-@import '@fontsource/ibm-plex-sans-arabic/arabic-500.css';
-@import '@fontsource/ibm-plex-sans-arabic/arabic-600.css';
-@import '@fontsource/ibm-plex-sans-arabic/arabic-700.css';
 @import '@fontsource/ibm-plex-sans-arabic/latin-400.css';
-@import '@fontsource/ibm-plex-sans-arabic/latin-500.css';
-@import '@fontsource/ibm-plex-sans-arabic/latin-600.css';
-@import '@fontsource/ibm-plex-sans-arabic/latin-700.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -18,122 +20,135 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------------------------------------------------------------------------
- * Design tokens — مأخوذة من ملف الفيجما المعتمد (وثيقة 03 §5)
- * شبكة 8px، ألوان حالات ثابتة، RTL افتراضي.
+ * نظام هوية موازين — منقول حرفيًا من mawazin1/front/src/styles/styles.scss
+ * والثيم الافتراضي «بنفسجيّ موازين» في src/constants.
  *
- * الفيجما يصمم الوضع الفاتح فقط؛ الوضع الداكن إضافة من عندنا تلتزم بنفس
- * الدلالات — لذلك لا يشير أي مكون إلى درجة لونية خام، بل إلى اسم دلالي.
+ * القاعدة الذهبية المنقولة معه: توكنز فقط. لا مكوّن في هذا المشروع يذكر لونًا
+ * أو مسافة أو زاوية بقيمة صريحة — كلها أسماء دلالية تُحل من هنا، فتغيير الهوية
+ * كاملة يبقى تعديلًا في هذا الملف وحده.
  * ------------------------------------------------------------------------ */
 @theme {
-    --font-sans:
-        'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-        'Segoe UI Emoji', 'Noto Color Emoji';
+    --font-sans: 'Cairo', 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-    /* السُلَّم الطباعي — مأخوذ من الفيجما. لكل دور مقاس واحد لا يُتجاوز،
-     * فلا تتفاوت القائمة عن المحتوى ولا بطاقة عن أختها. */
-    --text-micro: 0.6875rem; /* 11px — الشارات */
-    --text-micro--line-height: 1rem;
-    --text-caption: 0.75rem; /* 12px — الأوصاف والتواريخ */
-    --text-caption--line-height: 1.125rem;
-    --text-body: 0.875rem; /* 14px — النص الجاري وعناصر القائمة */
-    --text-body--line-height: 1.375rem;
-    --text-title: 1.125rem; /* 18px — عنوان البطاقة */
-    --text-title--line-height: 1.625rem;
-    --text-display: 1.4375rem; /* 23px — عنوان الشاشة واسم المنتج */
-    --text-display--line-height: 2rem;
-    --text-metric: 1.6875rem; /* 27px — قيمة المؤشر */
-    --text-metric--line-height: 2rem;
+    /* مقياس المسافات — أساس 4px (موازين: --space-1 … --space-12) */
+    --spacing: 0.25rem;
 
-    /* شبكة 8px */
-    --spacing: 0.5rem;
+    /* الزوايا — موازين: xs 5 · sm 8 · md 12 · lg 16 · pill 999 · badge 20 */
+    --radius-xs: 5px;
+    --radius-control: 8px;
+    --radius-md: 12px;
+    --radius-card: 16px;
+    --radius-badge: 20px;
+    --radius-pill: 999px;
 
-    /* الحواف كما في الفيجما: البطاقة 18px، عنصر التحكم 12px */
-    --radius-card: 1.125rem;
-    --radius-control: 0.75rem;
-    --radius-pill: 62.4375rem;
+    /* مقياس الخط — موازين: fs-xs 11.5 · fs-sm 13.5 · fs-md 14 ·
+     * mk-lg 16.5 · mk-title 19.5 · mk-hero 24 */
+    --text-micro: calc(11.5px * var(--fs-scale));
+    --text-micro--line-height: 1.4;
+    --text-caption: calc(13.5px * var(--fs-scale));
+    --text-caption--line-height: 1.6;
+    --text-body: calc(14px * var(--fs-scale));
+    --text-body--line-height: 1.6;
+    --text-title: calc(16.5px * var(--fs-scale));
+    --text-title--line-height: 1.4;
+    --text-display: calc(19.5px * var(--fs-scale));
+    --text-display--line-height: 1.3;
+    --text-metric: calc(24px * var(--fs-scale));
+    --text-metric--line-height: 1.3;
 
-    /* الهوية — #6d5df6 هو اللون الأساسي في الفيجما */
-    --color-brand-50: #f6f4ff;
-    --color-brand-100: #f1eeff;
-    --color-brand-200: #e0daff;
-    --color-brand-300: #c4b8fd;
-    --color-brand-400: #9b88fa;
-    --color-brand-500: #6d5df6;
-    --color-brand-600: #5b46f0;
-    --color-brand-700: #4a35d6;
-    --color-brand-800: #3c2caf;
-    --color-brand-900: #2f2389;
+    /* الحركة */
+    --default-transition-duration: 0.2s;
+    --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @layer base {
     :root {
+        /* مضاعِف حجم الخط — نقطة ضبط واحدة لسهولة الوصول (موازين: --fs-scale) */
+        --fs-scale: 1;
+
+        /* الهوية — «بنفسجيّ موازين» */
+        --color-accent: #5b3cf0;
+        --color-accent-soft: color-mix(in srgb, var(--color-accent) 10%, #ffffff);
+        --color-on-accent: #ffffff;
+
         /* الأسطح */
-        --color-surface-base: #f6f8fc;
+        --color-surface-base: #f4f5f9;
         --color-surface-raised: #ffffff;
-        --color-surface-sunken: #fbfcfe;
-        --color-surface-track: #eef2f6;
+        --color-surface-sunken: #f3f4f6;
+        --color-surface-track: #e8eaf0;
         --color-surface-overlay: #ffffff;
 
         /* النصوص */
-        --color-fg-default: #101828;
-        --color-fg-strong: #1d2939;
-        --color-fg-muted: #475467;
-        --color-fg-subtle: #667085;
+        --color-fg-default: #14121f;
+        --color-fg-strong: #14121f;
+        --color-fg-muted: #3a4250;
+        --color-fg-subtle: #7a7690;
         --color-fg-inverted: #ffffff;
 
-        /* الحدود */
-        --color-border-default: #e4e7ec;
-        --color-border-strong: #d0d5dd;
+        /* الحدود — border للفواصل، border-card للبطاقات والحقول */
+        --color-border-default: #ecedf3;
+        --color-border-strong: #c7ccd6;
 
-        --color-focus-ring: #6d5df6;
+        --color-focus-ring: var(--color-accent);
 
-        /* حالات ألوان ثابتة: success, warning, danger, info, neutral */
-        --color-success: #16b364;
-        --color-success-soft: #ecfdf3;
-        --color-warning: #f79009;
-        --color-warning-soft: #fff7ed;
-        --color-danger: #f04438;
-        --color-danger-soft: #fef3f2;
-        --color-info: #2f80ed;
-        --color-info-soft: #eef6ff;
-        --color-neutral: #667085;
-        --color-neutral-soft: #f2f4f7;
-        --color-accent: #6d5df6;
-        --color-accent-soft: #f1eeff;
+        /* الدلالي — لونٌ للمعنى فقط، ليس لكنة التصميم */
+        --color-success: #15803d;
+        --color-success-soft: #ecfdf5;
+        --color-warning: #a16207;
+        --color-warning-soft: #fffbeb;
+        --color-danger: #b91c1c;
+        --color-danger-soft: #fef2f2;
+        --color-info: #1d4ed8;
+        --color-info-soft: #eff6ff;
+        --color-neutral: #3a4250;
+        --color-neutral-soft: #f3f4f6;
+
+        /* الظلال — موازين: --shadow · --shadow-lg */
+        --shadow-card: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
+        --shadow-raised: 0 10px 25px rgb(0 0 0 / 0.08);
+
+        /* إيقاع التخطيط — موازين: page-pad 28 · section-gap 24 · card-gap 16 */
+        --page-pad: 1.75rem;
+        --section-gap: 1.5rem;
+        --card-gap: 1rem;
     }
 
     .dark {
-        --color-surface-base: #0f1117;
-        --color-surface-raised: #171a23;
-        --color-surface-sunken: #1c202b;
-        --color-surface-track: #262b38;
-        --color-surface-overlay: #1c202b;
+        --color-accent: #8471ff;
+        --color-accent-soft: color-mix(in srgb, var(--color-accent) 16%, #0b0f17);
 
-        --color-fg-default: #f2f4f7;
-        --color-fg-strong: #e4e7ec;
-        --color-fg-muted: #b6bfcc;
-        --color-fg-subtle: #98a2b3;
-        --color-fg-inverted: #101828;
+        --color-surface-base: #0b0f17;
+        --color-surface-raised: #1a2130;
+        --color-surface-sunken: #212a3b;
+        --color-surface-track: #2b3446;
+        --color-surface-overlay: #1a2130;
 
-        --color-border-default: #262b38;
-        --color-border-strong: #3a4152;
+        --color-fg-default: #f1f5f9;
+        --color-fg-strong: #f1f5f9;
+        --color-fg-muted: #dae2ed;
+        --color-fg-subtle: #a7b2c4;
+        --color-fg-inverted: #0b0f17;
 
-        --color-focus-ring: #9b88fa;
+        --color-border-default: #455370;
+        --color-border-strong: rgb(255 255 255 / 0.13);
 
-        /* الأصباغ تُفتَح على الداكن ليبقى تباين النص فوقها AA. */
-        --color-success: #47cd89;
-        --color-success-soft: #10291d;
-        --color-warning: #fdb022;
-        --color-warning-soft: #2b1d0a;
-        --color-danger: #f97066;
-        --color-danger-soft: #2c1414;
-        --color-info: #6aa8f5;
-        --color-info-soft: #12203a;
-        --color-neutral: #98a2b3;
-        --color-neutral-soft: #21262f;
-        --color-accent: #9b88fa;
-        --color-accent-soft: #1e1b3a;
+        /* الدلالي في الداكن يُمزج على السطح نفسه فلا تخرج التعبئة «طينية». */
+        --color-success: #4ade80;
+        --color-success-soft: color-mix(in srgb, #4ade80 11%, var(--color-surface-raised));
+        --color-warning: #fbbf24;
+        --color-warning-soft: color-mix(in srgb, #fbbf24 11%, var(--color-surface-raised));
+        --color-danger: #f87171;
+        --color-danger-soft: color-mix(in srgb, #f87171 11%, var(--color-surface-raised));
+        --color-info: #60a5fa;
+        --color-info-soft: color-mix(in srgb, #60a5fa 12%, var(--color-surface-raised));
+        --color-neutral: #dae2ed;
+        --color-neutral-soft: #212a3b;
+
+        --shadow-card: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
+        --shadow-raised: 0 10px 25px rgb(0 0 0 / 0.5);
+
+        color-scheme: dark;
     }
 
     * {
@@ -141,16 +156,22 @@
     }
 
     html {
-        /* أرقام متساوية العرض: الجداول والعدّادات لا تقفز عند تغير القيمة. */
+        /* أرقام متساوية العرض: الجداول والعدّادات لا تقفز عند تغيّر القيمة. */
         font-variant-numeric: tabular-nums;
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
     }
 
-    /* وثيقة 03 §6 — Focus واضح ومرئي في الوضعين. */
+    /* حلقة تركيز كما في موازين — ظلّ لا outline، فلا تقطعها البطاقات. */
     :focus-visible {
-        outline: 2px solid var(--color-focus-ring);
-        outline-offset: 2px;
+        outline: none;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus-ring) 25%, transparent);
+    }
+
+    /* البيانات لا يُفترض حجمها: أطول معرّف أو اسم ينكسر ولا يفيض أفقيًا. */
+    body {
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -165,7 +186,7 @@
 }
 
 /* يعرّض متغيرات الطبقة الأساسية كأدوات Tailwind (bg-surface-raised،
- * text-fg-muted…) دون تكرار قيمها. */
+ * text-fg-muted، rounded-card…) دون تكرار قيمها. */
 @theme inline {
     --color-surface-base: var(--color-surface-base);
     --color-surface-raised: var(--color-surface-raised);
@@ -194,6 +215,10 @@
     --color-neutral-soft: var(--color-neutral-soft);
     --color-accent: var(--color-accent);
     --color-accent-soft: var(--color-accent-soft);
+    --color-on-accent: var(--color-on-accent);
+
+    --shadow-card: var(--shadow-card);
+    --shadow-raised: var(--shadow-raised);
 }
 
 @utility skeleton-pulse {

@@ -325,7 +325,7 @@ export default function Index({
                                                             expanded === entry.id ? null : entry.id,
                                                         );
                                                     }}
-                                                    className="text-caption font-medium text-brand-600 hover:underline dark:text-brand-300"
+                                                    className="text-caption font-bold text-accent hover:underline"
                                                 >
                                                     {expanded === entry.id ? 'إخفاء' : 'عرض'}
                                                 </button>
@@ -394,7 +394,7 @@ export default function Index({
                                 aria-current={link.active ? 'page' : undefined}
                                 className={
                                     link.active
-                                        ? 'rounded-control bg-brand-600 px-3 py-1.5 text-body text-white'
+                                        ? 'rounded-control bg-accent px-3 py-1.5 text-body text-on-accent'
                                         : 'rounded-control px-3 py-1.5 text-body text-fg-muted hover:bg-surface-sunken'
                                 }
                                 dangerouslySetInnerHTML={{ __html: link.label }}

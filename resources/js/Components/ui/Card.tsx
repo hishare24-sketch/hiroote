@@ -9,7 +9,7 @@ export function Card({ children, className }: CardProps) {
     return (
         <div
             className={cn(
-                'rounded-card border border-border-default bg-surface-raised shadow-xs',
+                'rounded-card border border-border-strong bg-surface-raised shadow-card',
                 className,
             )}
         >
@@ -30,12 +30,12 @@ export function CardHeader({ title, description, actions, className }: CardHeade
     return (
         <div
             className={cn(
-                'flex items-start justify-between gap-4 border-b border-border-default px-6 py-4',
+                'flex items-start justify-between gap-4 border-b border-border-default px-5 py-4',
                 className,
             )}
         >
             <div className="min-w-0">
-                <h2 className="truncate text-title font-bold text-fg-default">{title}</h2>
+                <h2 className="truncate text-title font-extrabold text-fg-default">{title}</h2>
                 {description !== undefined ? (
                     <p className="mt-1 text-caption text-fg-muted">{description}</p>
                 ) : null}
@@ -46,11 +46,11 @@ export function CardHeader({ title, description, actions, className }: CardHeade
 }
 
 export function CardBody({ children, className }: CardProps) {
-    return <div className={cn('px-6 py-5', className)}>{children}</div>;
+    return <div className={cn('px-5 py-5', className)}>{children}</div>;
 }
 
 export function CardFooter({ children, className }: CardProps) {
     return (
-        <div className={cn('border-t border-border-default px-6 py-4', className)}>{children}</div>
+        <div className={cn('border-t border-border-default px-5 py-4', className)}>{children}</div>
     );
 }

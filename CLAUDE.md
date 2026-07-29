@@ -22,7 +22,8 @@
 - تسجيل مسارات/هجرات الـ Domain يتم تلقائيًا عبر `app/Providers/DomainServiceProvider.php` (ضع `Routes/web.php` أو `Database/Migrations` داخل الـ Domain).
 - الواجهة: صفحات Inertia في `resources/js/Pages`، المكونات المشتركة في `resources/js/Components/ui`، الأنواع المشتركة في `resources/js/types/index.ts`.
 - **RTL افتراضي** — استخدم الخصائص المنطقية (`ms-*`, `me-*`, `ps-*`, `pe-*`, `start`, `end`) وليس `ml/mr/pl/pr/left/right`.
-- ألوان الواجهة semantic فقط (`bg-surface-raised`, `text-fg-muted`, `bg-success-soft`…) — معرفة في `resources/css/app.css`. لا تستخدم درجات خام.
+- **الهوية البصرية = نظام موازين** (ADR-0002). التوكنات كلها في `resources/css/app.css`: الخط Cairo، اللكنة `--color-accent`، الأسطح والحدود والنصوص، الزوايا 5/8/12/16/999، المسافات أساس 4px، ومقاسات الخط `text-micro/caption/body/title/display/metric`.
+- **توكنز فقط** — يمنع لون أو مسافة أو زاوية أو مقاس خط بقيمة صريحة في أي مكوّن. استخدم الأسماء الدلالية (`bg-surface-raised`, `text-fg-muted`, `text-body`, `rounded-card`…). المرجع الكامل: `mawazin1/front/DESIGN-SYSTEM.md`.
 
 ## قواعد غير قابلة للتفاوض
 

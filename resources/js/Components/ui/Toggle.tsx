@@ -20,7 +20,7 @@ export function Toggle({ label, checked, onChange, disabled, hint, className }: 
     return (
         <div
             className={cn(
-                'flex items-center gap-3 rounded-control border border-border-default bg-surface-sunken px-4 py-3',
+                'flex items-center gap-3 rounded-md bg-surface-sunken px-4 py-3',
                 disabled === true ? 'opacity-60' : null,
                 className,
             )}

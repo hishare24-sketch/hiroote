@@ -43,12 +43,12 @@ export function Switch({
             <span
                 aria-hidden
                 className={cn(
-                    'pointer-events-none flex h-6 w-11 items-center rounded-pill p-0.5 transition-colors',
-                    'peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-focus-ring)]',
-                    checked ? 'justify-end bg-success' : 'justify-start bg-border-strong',
+                    'pointer-events-none flex h-[22px] w-10 items-center rounded-pill p-0.5 transition-colors',
+                    'peer-focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-focus-ring)_25%,transparent)]',
+                    checked ? 'justify-end bg-accent' : 'justify-start bg-surface-track',
                 )}
             >
-                <span className="size-5 rounded-full bg-white shadow-sm transition-all" />
+                <span className="size-[18px] rounded-full bg-white shadow-sm transition-all" />
             </span>
         </span>
     );

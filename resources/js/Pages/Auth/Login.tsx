@@ -23,7 +23,7 @@ export default function Login({ status }: LoginProps) {
             <div className="flex min-h-screen items-center justify-center bg-surface-base p-4">
                 <div className="w-full max-w-sm space-y-6">
                     <div className="flex flex-col items-center gap-2">
-                        <Activity aria-hidden className="size-10 text-brand-600" />
+                        <Activity aria-hidden className="size-10 text-accent" />
                         <h1 className="text-display font-bold text-fg-default">Hiroote AI</h1>
                         <p className="text-body text-fg-muted">لوحة إدارة المساعد الذكي</p>
                     </div>
