@@ -24,7 +24,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
 
     return (
         <div className="flex flex-col gap-1.5">
-            <label htmlFor={id} className="text-sm font-medium text-fg-default">
+            <label htmlFor={id} className="text-body font-medium text-fg-default">
                 {label}
             </label>
 
@@ -35,7 +35,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
                     aria-invalid={error !== undefined || undefined}
                     aria-describedby={error !== undefined ? errorId : undefined}
                     className={cn(
-                        'h-10 w-full appearance-none rounded-control border bg-surface-raised ps-3 pe-9 text-sm text-fg-default',
+                        'h-10 w-full appearance-none rounded-control border bg-surface-raised ps-3 pe-9 text-body text-fg-default',
                         'disabled:cursor-not-allowed disabled:opacity-60',
                         error !== undefined ? 'border-danger' : 'border-border-strong',
                         className,
@@ -57,7 +57,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
             </div>
 
             {error !== undefined ? (
-                <p id={errorId} role="alert" className="text-xs font-medium text-danger">
+                <p id={errorId} role="alert" className="text-caption font-medium text-danger">
                     {error}
                 </p>
             ) : null}

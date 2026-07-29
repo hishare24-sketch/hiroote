@@ -30,9 +30,9 @@ export function Alert({ tone = 'info', title, children, actions, className }: Al
             <div className="min-w-0 flex-1">
                 {/* Carries the tone for assistive tech, since the colour cannot. */}
                 <span className="sr-only">{srLabel}: </span>
-                <p className="text-sm font-semibold">{title}</p>
+                <p className="text-body font-semibold">{title}</p>
                 {children !== undefined ? (
-                    <div className="mt-1 text-sm opacity-90">{children}</div>
+                    <div className="mt-1 text-body opacity-90">{children}</div>
                 ) : null}
             </div>
             {actions !== undefined ? <div className="shrink-0">{actions}</div> : null}

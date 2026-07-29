@@ -60,13 +60,15 @@ export function StatCard({
                 >
                     <Icon className="size-5" />
                 </span>
-                <p className="min-w-0 flex-1 truncate text-sm font-medium text-fg-muted">{label}</p>
+                <p className="min-w-0 flex-1 truncate text-body font-medium text-fg-muted">
+                    {label}
+                </p>
             </div>
 
             <div>
-                <p className="text-[28px] leading-none font-bold text-fg-default">{value}</p>
+                <p className="text-metric font-bold text-fg-default">{value}</p>
                 {caption !== undefined ? (
-                    <p className="mt-2 text-xs text-fg-muted">{caption}</p>
+                    <p className="mt-1.5 text-caption text-fg-muted">{caption}</p>
                 ) : null}
             </div>
 

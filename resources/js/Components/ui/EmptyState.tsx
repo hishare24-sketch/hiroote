@@ -16,9 +16,9 @@ export function EmptyState({ title, description, icon: Icon = Inbox, action }: E
                 <Icon aria-hidden className="size-6 text-fg-subtle" />
             </div>
             <div>
-                <p className="text-sm font-semibold text-fg-default">{title}</p>
+                <p className="text-body font-semibold text-fg-default">{title}</p>
                 {description !== undefined ? (
-                    <p className="mt-1 max-w-sm text-sm text-fg-muted">{description}</p>
+                    <p className="mt-1 max-w-sm text-body text-fg-muted">{description}</p>
                 ) : null}
             </div>
             {action}

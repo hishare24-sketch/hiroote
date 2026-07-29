@@ -18,7 +18,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 
     return (
         <div className="flex flex-col gap-1.5">
-            <label htmlFor={id} className="text-sm font-medium text-fg-default">
+            <label htmlFor={id} className="text-body font-medium text-fg-default">
                 {label}
                 {props.required === true ? (
                     <span aria-hidden className="ms-1 text-danger">
@@ -35,7 +35,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
                     cn(hint !== undefined && hintId, error !== undefined && errorId) || undefined
                 }
                 className={cn(
-                    'h-10 w-full rounded-control border bg-surface-raised px-3 text-sm text-fg-default',
+                    'h-10 w-full rounded-control border bg-surface-raised px-3 text-body text-fg-default',
                     'placeholder:text-fg-subtle disabled:cursor-not-allowed disabled:opacity-60',
                     error !== undefined ? 'border-danger' : 'border-border-strong',
                     className,
@@ -44,13 +44,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             />
 
             {hint !== undefined ? (
-                <p id={hintId} className="text-xs text-fg-muted">
+                <p id={hintId} className="text-caption text-fg-muted">
                     {hint}
                 </p>
             ) : null}
 
             {error !== undefined ? (
-                <p id={errorId} role="alert" className="text-xs font-medium text-danger">
+                <p id={errorId} role="alert" className="text-caption font-medium text-danger">
                     {error}
                 </p>
             ) : null}

@@ -25,10 +25,10 @@ export function ErrorState({
                 <AlertTriangle aria-hidden className="size-6 text-danger" />
             </div>
             <div>
-                <p className="text-sm font-semibold text-fg-default">{title}</p>
-                <p className="mt-1 max-w-sm text-sm text-fg-muted">{description}</p>
+                <p className="text-body font-semibold text-fg-default">{title}</p>
+                <p className="mt-1 max-w-sm text-body text-fg-muted">{description}</p>
                 {requestId !== undefined ? (
-                    <p className="mt-2 font-mono text-xs text-fg-subtle" dir="ltr">
+                    <p className="mt-2 font-mono text-caption text-fg-subtle" dir="ltr">
                         request_id: {requestId}
                     </p>
                 ) : null}

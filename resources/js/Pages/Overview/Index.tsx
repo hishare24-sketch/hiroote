@@ -119,7 +119,7 @@ function SetupPanel({ steps }: { steps: SetupStep[] }) {
                                 style={{ width: `${String(percent)}%` }}
                             />
                         </div>
-                        <span className="text-sm font-bold text-fg-default">
+                        <span className="text-body font-bold text-fg-default">
                             {Math.round(percent)}%
                         </span>
                     </div>
@@ -137,7 +137,7 @@ function SetupPanel({ steps }: { steps: SetupStep[] }) {
                                 className={
                                     step.done
                                         ? 'flex size-8 shrink-0 items-center justify-center rounded-full bg-success text-white'
-                                        : 'flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-border-strong text-sm font-bold text-fg-subtle'
+                                        : 'flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-border-strong text-body font-bold text-fg-subtle'
                                 }
                             >
                                 {step.done ? <Check className="size-4" /> : index + 1}
@@ -147,13 +147,13 @@ function SetupPanel({ steps }: { steps: SetupStep[] }) {
                                 <span
                                     className={
                                         step.done
-                                            ? 'block text-sm font-medium text-fg-muted line-through'
-                                            : 'block text-sm font-bold text-fg-default'
+                                            ? 'block text-body font-medium text-fg-muted line-through'
+                                            : 'block text-body font-bold text-fg-default'
                                     }
                                 >
                                     {step.title}
                                 </span>
-                                <span className="mt-0.5 block text-xs text-fg-muted">
+                                <span className="mt-0.5 block text-caption text-fg-muted">
                                     {step.detail}
                                 </span>
                             </span>
@@ -163,7 +163,7 @@ function SetupPanel({ steps }: { steps: SetupStep[] }) {
                             ) : step.href !== null && step.cta !== null ? (
                                 <Link
                                     href={step.href}
-                                    className="inline-flex shrink-0 items-center gap-1.5 rounded-control bg-accent px-4 py-2 text-xs font-bold text-white hover:brightness-110"
+                                    className="inline-flex shrink-0 items-center gap-1.5 rounded-control bg-accent px-4 py-2 text-caption font-bold text-white hover:brightness-110"
                                 >
                                     {step.cta}
                                     <ArrowLeft aria-hidden className="size-3.5" />
@@ -227,7 +227,7 @@ export default function Index({
                         actions={
                             <Link
                                 href="/providers"
-                                className="text-xs font-bold text-accent hover:underline"
+                                className="text-caption font-bold text-accent hover:underline"
                             >
                                 إدارة
                             </Link>
@@ -242,14 +242,14 @@ export default function Index({
                                 >
                                     <span
                                         aria-hidden
-                                        className="flex size-7 shrink-0 items-center justify-center rounded-control bg-surface-track text-xs font-bold text-fg-muted"
+                                        className="flex size-7 shrink-0 items-center justify-center rounded-control bg-surface-track text-caption font-bold text-fg-muted"
                                     >
                                         {index + 1}
                                     </span>
 
                                     <span className="min-w-0 flex-1">
                                         <span className="flex items-center gap-2">
-                                            <span className="text-[15px] font-bold text-fg-default">
+                                            <span className="text-body font-bold text-fg-default">
                                                 {provider.name}
                                             </span>
                                             {provider.is_active ? (
@@ -261,7 +261,7 @@ export default function Index({
                                                 <Badge tone="neutral">معطل</Badge>
                                             ) : null}
                                         </span>
-                                        <span className="mt-0.5 block text-xs text-fg-muted">
+                                        <span className="mt-0.5 block text-caption text-fg-muted">
                                             {provider.model ?? 'بلا نموذج افتراضي'} ·{' '}
                                             {provider.balance.toLocaleString('ar', {
                                                 maximumFractionDigits: 0,
@@ -322,7 +322,7 @@ export default function Index({
                     actions={
                         <Link
                             href="/audit"
-                            className="text-xs font-bold text-accent hover:underline"
+                            className="text-caption font-bold text-accent hover:underline"
                         >
                             السجل الكامل
                         </Link>
@@ -330,7 +330,7 @@ export default function Index({
                 />
                 <CardBody className="p-0">
                     {recentActivity.length === 0 ? (
-                        <p className="px-6 py-8 text-center text-sm text-fg-muted">
+                        <p className="px-6 py-8 text-center text-body text-fg-muted">
                             لا يوجد نشاط مسجل بعد.
                         </p>
                     ) : (
@@ -341,20 +341,20 @@ export default function Index({
                                     className="flex flex-wrap items-center gap-3 border-b border-border-default px-6 py-3 last:border-0"
                                 >
                                     <span
-                                        className={`shrink-0 rounded-pill px-2.5 py-1 text-xs font-bold ${categoryClass(entry.tone)}`}
+                                        className={`shrink-0 rounded-pill px-2.5 py-1 text-caption font-bold ${categoryClass(entry.tone)}`}
                                     >
                                         {entry.category}
                                     </span>
                                     <span
-                                        className="min-w-0 flex-1 truncate font-mono text-xs text-fg-default"
+                                        className="min-w-0 flex-1 truncate font-mono text-caption text-fg-default"
                                         dir="ltr"
                                     >
                                         {entry.action}
                                     </span>
-                                    <span className="shrink-0 text-xs text-fg-muted">
+                                    <span className="shrink-0 text-caption text-fg-muted">
                                         {entry.actor}
                                     </span>
-                                    <span className="shrink-0 text-xs text-fg-muted">
+                                    <span className="shrink-0 text-caption text-fg-muted">
                                         {formatTime(entry.created_at)}
                                     </span>
                                 </li>
@@ -365,7 +365,7 @@ export default function Index({
             </Card>
 
             {/* ما يصل مع المرحلة الثانية — سطر واحد بدل بطاقات مجوّفة */}
-            <p className="flex items-center justify-center gap-2 pb-2 text-center text-xs text-fg-muted">
+            <p className="flex items-center justify-center gap-2 pb-2 text-center text-caption text-fg-muted">
                 <ShieldCheck aria-hidden className="size-4 shrink-0" />
                 مؤشرات التوكن والتكلفة والمحادثات تظهر هنا فور ربط محرك المحادثات في المرحلة
                 الثانية.

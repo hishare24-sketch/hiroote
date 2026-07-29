@@ -23,22 +23,22 @@ export function PageHeader({ title, description, systemStatus, period, actions }
     return (
         <header className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-border-default bg-surface-raised px-6 py-4">
             <div className="min-w-0">
-                <h1 className="truncate text-xl font-bold text-fg-default">{title}</h1>
-                <p className="mt-0.5 text-xs text-fg-muted">{description}</p>
+                <h1 className="truncate text-display font-bold text-fg-default">{title}</h1>
+                <p className="mt-0.5 text-caption text-fg-muted">{description}</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
                 {actions}
 
                 {period !== undefined ? (
-                    <span className="rounded-pill bg-info-soft px-4 py-1.5 text-xs font-bold text-info">
+                    <span className="rounded-pill bg-info-soft px-4 py-1.5 text-caption font-bold text-info">
                         {period}
                     </span>
                 ) : null}
 
                 <span
                     className={cn(
-                        'inline-flex items-center gap-1.5 rounded-pill px-4 py-1.5 text-xs font-bold',
+                        'inline-flex items-center gap-1.5 rounded-pill px-4 py-1.5 text-caption font-bold',
                         PILL_TONES[systemStatus.tone],
                     )}
                 >

@@ -34,9 +34,9 @@ export function Toggle({ label, checked, onChange, disabled, hint, className }: 
             />
 
             <span className="min-w-0 flex-1">
-                <span className="block text-[13px] text-fg-default">{label}</span>
+                <span className="block text-body text-fg-default">{label}</span>
                 {hint !== undefined ? (
-                    <span id={hintId} className="mt-0.5 block text-xs text-fg-muted">
+                    <span id={hintId} className="mt-0.5 block text-caption text-fg-muted">
                         {hint}
                     </span>
                 ) : null}

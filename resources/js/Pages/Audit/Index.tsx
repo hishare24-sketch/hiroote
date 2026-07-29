@@ -92,7 +92,7 @@ function ValuePreview({ values }: { values: Record<string, unknown> | null }) {
     return (
         <ul className="space-y-0.5">
             {Object.entries(values).map(([key, value]) => (
-                <li key={key} className="text-xs">
+                <li key={key} className="text-caption">
                     <span className="text-fg-subtle">{key}:</span>{' '}
                     <span className="text-fg-default">{stringifyValue(value)}</span>
                 </li>
@@ -271,7 +271,7 @@ export default function Index({
                         />
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
+                            <table className="w-full text-body">
                                 <thead className="border-b border-border-default bg-surface-sunken">
                                     <tr className="text-fg-muted">
                                         <th className="px-4 py-3 text-start font-medium">
@@ -293,7 +293,7 @@ export default function Index({
                                         >
                                             <td className="px-4 py-3">
                                                 <span
-                                                    className="font-mono text-xs text-fg-default"
+                                                    className="font-mono text-caption text-fg-default"
                                                     dir="ltr"
                                                 >
                                                     {entry.action}
@@ -301,7 +301,7 @@ export default function Index({
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span
-                                                    className={`inline-flex rounded-pill px-2.5 py-1 text-xs font-bold ${categoryClass(entry.category_tone)}`}
+                                                    className={`inline-flex rounded-pill px-2.5 py-1 text-caption font-bold ${categoryClass(entry.category_tone)}`}
                                                 >
                                                     {entry.category}
                                                 </span>
@@ -309,7 +309,7 @@ export default function Index({
                                             <td className="px-4 py-3">
                                                 <div className="text-fg-default">{entry.actor}</div>
                                                 {entry.actor_role !== null ? (
-                                                    <div className="text-xs text-fg-subtle">
+                                                    <div className="text-caption text-fg-subtle">
                                                         {entry.actor_role}
                                                     </div>
                                                 ) : null}
@@ -325,7 +325,7 @@ export default function Index({
                                                             expanded === entry.id ? null : entry.id,
                                                         );
                                                     }}
-                                                    className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-300"
+                                                    className="text-caption font-medium text-brand-600 hover:underline dark:text-brand-300"
                                                 >
                                                     {expanded === entry.id ? 'إخفاء' : 'عرض'}
                                                 </button>
@@ -333,7 +333,7 @@ export default function Index({
                                                 {expanded === entry.id ? (
                                                     <div className="mt-2 space-y-2 rounded-control bg-surface-sunken p-3">
                                                         <div>
-                                                            <p className="text-xs font-semibold text-fg-default">
+                                                            <p className="text-caption font-semibold text-fg-default">
                                                                 القيمة السابقة
                                                             </p>
                                                             <ValuePreview
@@ -341,7 +341,7 @@ export default function Index({
                                                             />
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-semibold text-fg-default">
+                                                            <p className="text-caption font-semibold text-fg-default">
                                                                 القيمة الجديدة
                                                             </p>
                                                             <ValuePreview
@@ -350,16 +350,16 @@ export default function Index({
                                                         </div>
                                                         {entry.reason !== null ? (
                                                             <div>
-                                                                <p className="text-xs font-semibold text-fg-default">
+                                                                <p className="text-caption font-semibold text-fg-default">
                                                                     السبب
                                                                 </p>
-                                                                <p className="text-xs text-fg-muted">
+                                                                <p className="text-caption text-fg-muted">
                                                                     {entry.reason}
                                                                 </p>
                                                             </div>
                                                         ) : null}
                                                         <div
-                                                            className="font-mono text-[11px] text-fg-subtle"
+                                                            className="font-mono text-micro text-fg-subtle"
                                                             dir="ltr"
                                                         >
                                                             {entry.ip_address ?? '—'} ·{' '}
@@ -383,7 +383,7 @@ export default function Index({
                         link.url === null ? (
                             <span
                                 key={link.label}
-                                className="rounded-control px-3 py-1.5 text-sm text-fg-subtle"
+                                className="rounded-control px-3 py-1.5 text-body text-fg-subtle"
                                 dangerouslySetInnerHTML={{ __html: link.label }}
                             />
                         ) : (
@@ -394,8 +394,8 @@ export default function Index({
                                 aria-current={link.active ? 'page' : undefined}
                                 className={
                                     link.active
-                                        ? 'rounded-control bg-brand-600 px-3 py-1.5 text-sm text-white'
-                                        : 'rounded-control px-3 py-1.5 text-sm text-fg-muted hover:bg-surface-sunken'
+                                        ? 'rounded-control bg-brand-600 px-3 py-1.5 text-body text-white'
+                                        : 'rounded-control px-3 py-1.5 text-body text-fg-muted hover:bg-surface-sunken'
                                 }
                                 dangerouslySetInnerHTML={{ __html: link.label }}
                             />

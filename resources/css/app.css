@@ -30,6 +30,21 @@
         'Segoe UI Emoji', 'Noto Color Emoji';
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
+    /* السُلَّم الطباعي — مأخوذ من الفيجما. لكل دور مقاس واحد لا يُتجاوز،
+     * فلا تتفاوت القائمة عن المحتوى ولا بطاقة عن أختها. */
+    --text-micro: 0.6875rem; /* 11px — الشارات */
+    --text-micro--line-height: 1rem;
+    --text-caption: 0.75rem; /* 12px — الأوصاف والتواريخ */
+    --text-caption--line-height: 1.125rem;
+    --text-body: 0.875rem; /* 14px — النص الجاري وعناصر القائمة */
+    --text-body--line-height: 1.375rem;
+    --text-title: 1.125rem; /* 18px — عنوان البطاقة */
+    --text-title--line-height: 1.625rem;
+    --text-display: 1.4375rem; /* 23px — عنوان الشاشة واسم المنتج */
+    --text-display--line-height: 2rem;
+    --text-metric: 1.6875rem; /* 27px — قيمة المؤشر */
+    --text-metric--line-height: 2rem;
+
     /* شبكة 8px */
     --spacing: 0.5rem;
 

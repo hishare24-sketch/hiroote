@@ -24,8 +24,8 @@ export default function Login({ status }: LoginProps) {
                 <div className="w-full max-w-sm space-y-6">
                     <div className="flex flex-col items-center gap-2">
                         <Activity aria-hidden className="size-10 text-brand-600" />
-                        <h1 className="text-xl font-bold text-fg-default">Hiroote AI</h1>
-                        <p className="text-sm text-fg-muted">لوحة إدارة المساعد الذكي</p>
+                        <h1 className="text-display font-bold text-fg-default">Hiroote AI</h1>
+                        <p className="text-body text-fg-muted">لوحة إدارة المساعد الذكي</p>
                     </div>
 
                     {status !== null ? <Alert tone="info" title={status} /> : null}
@@ -65,7 +65,7 @@ export default function Login({ status }: LoginProps) {
                                     error={errors.password}
                                 />
 
-                                <label className="flex items-center gap-2 text-sm text-fg-muted">
+                                <label className="flex items-center gap-2 text-body text-fg-muted">
                                     <input
                                         type="checkbox"
                                         checked={data.remember}

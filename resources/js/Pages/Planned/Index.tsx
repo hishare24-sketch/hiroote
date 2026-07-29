@@ -42,7 +42,7 @@ export default function Index({ screen, systemStatus }: PlannedProps) {
                 <CardBody className="space-y-6">
                     <div className="flex items-start gap-3 rounded-card bg-info-soft px-4 py-3 text-info">
                         <Clock aria-hidden className="mt-0.5 size-5 shrink-0" />
-                        <p className="text-sm">
+                        <p className="text-body">
                             هذه الشاشة مخططة ضمن <strong>المرحلة {screen.phase}</strong> ولم تُنفّذ
                             بعد. البنية الخلفية والصلاحيات الخاصة بها جاهزة، وسيظهر محتواها هنا فور
                             تنفيذ المرحلة.
@@ -50,12 +50,14 @@ export default function Index({ screen, systemStatus }: PlannedProps) {
                     </div>
 
                     <div>
-                        <h3 className="text-sm font-semibold text-fg-default">ما ستحتويه الشاشة</h3>
+                        <h3 className="text-body font-semibold text-fg-default">
+                            ما ستحتويه الشاشة
+                        </h3>
                         <ul className="mt-3 space-y-2">
                             {screen.items.map((item) => (
                                 <li
                                     key={item}
-                                    className="flex items-start gap-2 text-sm text-fg-muted"
+                                    className="flex items-start gap-2 text-body text-fg-muted"
                                 >
                                     <CheckCircle2
                                         aria-hidden

@@ -71,7 +71,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
                         aria-current={active ? 'page' : undefined}
                         title={item.planned === true ? `${item.label} — قريبًا` : item.label}
                         className={cn(
-                            'flex items-center gap-2 rounded-control px-3 py-2.5 text-sm transition-colors',
+                            'flex items-center gap-2.5 rounded-control px-3 py-2.5 text-body transition-colors',
                             active
                                 ? 'bg-accent-soft font-bold text-accent'
                                 : item.planned === true
@@ -111,8 +111,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     const sidebar = (
         <>
             <div className="px-6 py-6">
-                <p className="text-xl font-bold text-accent">Hiroote AI</p>
-                <p className="mt-0.5 text-xs text-fg-muted">إدارة المساعد الذكي</p>
+                <p className="text-display font-bold text-accent">Hiroote AI</p>
+                <p className="mt-0.5 text-caption text-fg-muted">إدارة المساعد الذكي</p>
             </div>
 
             <nav
@@ -127,8 +127,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </nav>
 
             <div className="border-t border-border-default px-6 py-4">
-                <p className="truncate text-sm font-medium text-fg-default">{auth.user?.name}</p>
-                <p className="truncate text-xs text-fg-muted">{auth.user?.role_label}</p>
+                <p className="truncate text-body font-medium text-fg-default">{auth.user?.name}</p>
+                <p className="truncate text-caption text-fg-muted">{auth.user?.role_label}</p>
 
                 <div className="mt-3 flex items-center gap-1">
                     <button
@@ -191,7 +191,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     onClick={() => {
                         setMobileNavOpen((open) => !open);
                     }}
-                    className="m-4 flex w-fit items-center gap-2 rounded-control border border-border-default bg-surface-raised px-4 py-2 text-sm text-fg-default lg:hidden"
+                    className="m-4 flex w-fit items-center gap-2 rounded-control border border-border-default bg-surface-raised px-4 py-2 text-body text-fg-default lg:hidden"
                 >
                     {mobileNavOpen ? (
                         <X aria-hidden className="size-4" />

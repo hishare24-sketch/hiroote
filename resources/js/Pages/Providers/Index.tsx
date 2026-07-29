@@ -122,7 +122,7 @@ function CheckCountdown({ seconds }: { seconds: number }) {
     const pad = (value: number) => String(value).padStart(2, '0');
 
     return (
-        <span className="font-mono text-2xl font-bold text-fg-default" dir="ltr">
+        <span className="font-mono text-metric font-bold text-fg-default" dir="ltr">
             {pad(Math.floor(remaining / 3600))}:{pad(Math.floor((remaining % 3600) / 60))}:
             {pad(remaining % 60)}
         </span>
@@ -162,8 +162,8 @@ function IconAction({
 function MetricTile({ label, value }: { label: string; value: string }) {
     return (
         <div className="rounded-control border border-border-default bg-surface-sunken px-4 py-3">
-            <p className="text-xs text-fg-muted">{label}</p>
-            <p className="mt-1 text-base font-bold text-fg-default">{value}</p>
+            <p className="text-caption text-fg-muted">{label}</p>
+            <p className="mt-1 text-title font-bold text-fg-default">{value}</p>
         </div>
     );
 }
@@ -323,7 +323,7 @@ export default function Index({
                         />
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[840px] text-sm">
+                            <table className="w-full min-w-[840px] text-body">
                                 <thead className="border-b border-border-default bg-surface-sunken text-fg-muted">
                                     <tr>
                                         <th className="px-4 py-3 text-start font-medium">
@@ -355,7 +355,7 @@ export default function Index({
                                             >
                                                 <td className="px-4 py-3">
                                                     <span className="flex items-center gap-1">
-                                                        <span className="flex size-7 items-center justify-center rounded-control bg-accent-soft text-xs font-bold text-accent">
+                                                        <span className="flex size-7 items-center justify-center rounded-control bg-accent-soft text-caption font-bold text-accent">
                                                             {provider.priority}
                                                         </span>
                                                         {can('providers.manage') ? (
@@ -514,7 +514,7 @@ export default function Index({
                                   <CredentialForm provider={provider} />
 
                                   {provider.credentials.length > 0 ? (
-                                      <ul className="space-y-1 text-sm">
+                                      <ul className="space-y-1 text-body">
                                           {provider.credentials.map((credential) => (
                                               <li
                                                   key={credential.id}
@@ -523,7 +523,7 @@ export default function Index({
                                                   <span className="min-w-0 truncate text-fg-default">
                                                       {credential.label}{' '}
                                                       <span
-                                                          className="font-mono text-xs text-fg-muted"
+                                                          className="font-mono text-caption text-fg-muted"
                                                           dir="ltr"
                                                       >
                                                           ••••{credential.key_hint}
@@ -573,9 +573,9 @@ export default function Index({
                     <CardHeader title="الفحص الذاتي والحالة" />
                     <CardBody className="space-y-4">
                         <div className="flex items-center justify-between gap-3 rounded-control border border-border-default bg-surface-sunken px-4 py-3">
-                            <span className="text-xs text-fg-muted">الفحص القادم بعد</span>
+                            <span className="text-caption text-fg-muted">الفحص القادم بعد</span>
                             {healthCheck.nextCheckInSeconds === null ? (
-                                <span className="text-sm text-fg-subtle">لم يُجرَ فحص بعد</span>
+                                <span className="text-body text-fg-subtle">لم يُجرَ فحص بعد</span>
                             ) : (
                                 <CheckCountdown
                                     key={healthCheck.nextCheckInSeconds}
@@ -584,7 +584,7 @@ export default function Index({
                             )}
                         </div>
 
-                        <dl className="space-y-2 text-sm">
+                        <dl className="space-y-2 text-body">
                             <div className="flex justify-between gap-3">
                                 <dt className="text-fg-muted">دورة الفحص</dt>
                                 <dd className="font-medium text-fg-default">
@@ -672,7 +672,7 @@ export default function Index({
                                     <span className="font-bold text-fg-default" dir="ltr">
                                         {event.from ?? '—'} ← {event.to ?? '—'}
                                     </span>
-                                    <span className="flex items-center gap-4 text-xs text-fg-muted">
+                                    <span className="flex items-center gap-4 text-caption text-fg-muted">
                                         <span>{event.reason}</span>
                                         <span>{event.triggered_by ?? 'تلقائي'}</span>
                                         <span>{formatDate(event.created_at)}</span>

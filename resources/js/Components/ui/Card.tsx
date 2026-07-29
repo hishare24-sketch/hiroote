@@ -35,9 +35,9 @@ export function CardHeader({ title, description, actions, className }: CardHeade
             )}
         >
             <div className="min-w-0">
-                <h2 className="truncate text-base font-semibold text-fg-default">{title}</h2>
+                <h2 className="truncate text-title font-bold text-fg-default">{title}</h2>
                 {description !== undefined ? (
-                    <p className="mt-1 text-sm text-fg-muted">{description}</p>
+                    <p className="mt-1 text-caption text-fg-muted">{description}</p>
                 ) : null}
             </div>
             {actions !== undefined ? <div className="shrink-0">{actions}</div> : null}
