@@ -2,6 +2,8 @@ import { Head, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Calculator, Link2, Plug, RefreshCw, Settings2 } from 'lucide-react';
 import type { StatusTone, Tone } from '@/types';
+import type { ConnectionMethod } from './MethodCards';
+import { MethodCards } from './MethodCards';
 import { AdminLayout } from '@/Layouts/AdminLayout';
 import { Alert } from '@/Components/ui/Alert';
 import { Badge } from '@/Components/ui/Badge';
@@ -91,6 +93,7 @@ interface Props {
     systemStatus: { label: string; tone: StatusTone };
     project: { id: number; name: string };
     bridge: BridgeRow | null;
+    methods: ConnectionMethod[];
     snapshot: Snapshot | null;
     fetchedAt: string;
 }
@@ -108,18 +111,25 @@ const ENDPOINT_LABELS: Record<string, string> = {
  * كل رقم هنا يقول من أين جاء: **مقروء** من موازين كما هو، أو **محسوب** في هاي
  * روت من أرقامه. والخلط بينهما يجعل تقديرًا يُقرأ كقياس.
  */
-export default function BridgeIndex({ systemStatus, project, bridge, snapshot, fetchedAt }: Props) {
+export default function BridgeIndex({
+    systemStatus,
+    project,
+    bridge,
+    methods,
+    snapshot,
+    fetchedAt,
+}: Props) {
     const { can } = usePermissions();
     const manage = can('integrations.manage');
     const [editing, setEditing] = useState(bridge === null);
 
     return (
         <AdminLayout>
-            <Head title="جسر المشروع" />
+            <Head title="الربط والتكامل" />
 
             <PageHeader
-                title="جسر المشروع"
-                description={`ما يقوله ${project.name} عن مساعده — قراءة حيّة`}
+                title="الربط والتكامل"
+                description={`كل مسار ممكن بين هاي روت و${project.name} — وما يصل منه الآن`}
                 systemStatus={systemStatus}
                 actions={
                     <span className="flex items-center gap-2">
@@ -151,6 +161,8 @@ export default function BridgeIndex({ systemStatus, project, bridge, snapshot, f
                 هذه الشاشة تعرض ما في {project.name} ولا تغيّره. أي تعديل يبقى في لوحة المشروع نفسه
                 — والكتابة من هنا قرارٌ مؤجَّل لم يُبنَ له مسار.
             </Alert>
+
+            <MethodCards methods={methods} />
 
             {bridge === null ? null : (
                 <Card>

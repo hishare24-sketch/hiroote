@@ -8,6 +8,7 @@ use App\Domains\Administration\Actions\RecordAuditEntry;
 use App\Domains\Administration\DTOs\AuditEntry;
 use App\Domains\Integrations\DTOs\BridgeResult;
 use App\Domains\Integrations\Models\ProjectBridge;
+use App\Domains\Integrations\Services\ConnectionMethods;
 use App\Domains\Integrations\Services\MawazinBridge;
 use App\Domains\Integrations\Services\MawazinPresenter;
 use App\Domains\Projects\Services\CurrentProject;
@@ -31,6 +32,7 @@ class BridgeController extends Controller
         private readonly CurrentProject $current,
         private readonly MawazinBridge $bridge,
         private readonly MawazinPresenter $presenter,
+        private readonly ConnectionMethods $methods,
     ) {}
 
     public function index(): Response
@@ -62,6 +64,7 @@ class BridgeController extends Controller
                 'last_error' => $bridge->last_error,
                 'last_error_at' => $bridge->last_error_at?->toIso8601String(),
             ],
+            'methods' => $this->methods->forProject($project),
             'snapshot' => $snapshot === [] ? null : $this->presenter->present($snapshot),
             'fetchedAt' => now()->toIso8601String(),
         ]);

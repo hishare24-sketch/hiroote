@@ -27,7 +27,7 @@ const NAV_ITEMS: NavItem[] = [
     { label: 'إعدادات وسلوك المساعد', href: '/assistants', permission: 'assistants.view' },
     { label: 'تكامل أقسام المشروع', href: '/integrations', permission: 'integrations.view' },
     { label: 'قاعدة المعرفة', href: '/knowledge', permission: 'knowledge.view' },
-    { label: 'جسر المشروع', href: '/bridge', permission: 'integrations.view' },
+    { label: 'الربط والتكامل', href: '/bridge', permission: 'integrations.view' },
     { label: 'التنبيهات', href: '/alerts', permission: 'alerts.view' },
     { label: 'سجل التشغيل', href: '/audit', permission: 'audit.view' },
     {
