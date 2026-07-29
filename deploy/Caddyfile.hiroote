@@ -1,0 +1,47 @@
+# ═══ كتلة هاي روت — تُضاف إلى Caddyfile الخاص بموازين على الخادم ═══
+#
+# منفذا 80 و443 مشغولان بـ Caddy موازين، فلا يمكن تشغيل بوّابة ثانية. والحلّ
+# كتلة موقعٍ ثانية في نفس الملف: Caddy تخدم نطاقين من عملية واحدة، وتُصدر لكلٍّ
+# شهادته.
+#
+# ⚠️ **هذا الملف يُعدَّل في مستودع موازين لا هنا.** انسخ ما تحت هذا السطر وألصقه
+# في نهاية `Caddyfile` هناك، ثم أضف المتغيّر إلى خدمة caddy في
+# `docker-compose.prod.yml`:
+#
+#     environment:
+#       DOMAIN: ${DOMAIN:?...}
+#       HIROOTE_DOMAIN: ${HIROOTE_DOMAIN:?ضع HIROOTE_DOMAIN في .env}
+#
+# وقبل إعادة التحميل **تحقّق من الصيغة**، فخطأٌ هنا يُسقط mawazinswift.com معه:
+#
+#     docker exec mazeen-staging-caddy-1 caddy validate --config /etc/caddy/Caddyfile
+#
+# ثم أعد التحميل بلا انقطاع (لا `restart`):
+#
+#     docker exec mazeen-staging-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+#
+# و`reload` بإعدادٍ فاسد تُرفض ويبقى القديم عاملًا — وهذا سبب اختيارها.
+
+# ───────────────────────────── انسخ من هنا ─────────────────────────────
+
+{$HIROOTE_DOMAIN} {
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		# لوحة تحكم لا تُؤطَّر في أي إطار: `DENY` أشدّ من `SAMEORIGIN` ولا
+		# تحتاج اللوحة تأطير نفسها.
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# لوحة إدارة لا تحتاج شيئًا من هذه: إطفاؤها كلها هو الافتراض الصحيح.
+		Permissions-Policy "geolocation=(), microphone=(), camera=(), display-capture=(), payment=()"
+		-Server
+	}
+
+	# اسم الحاوية = مشروع compose (`hiroote`) + اسم الخدمة (`app`).
+	# والمنفذ ٨٠٨٠ داخليّ لا يُنشر إلى الخارج.
+	reverse_proxy hiroote-app-1:8080
+}
+
+# ───────────────────────────── إلى هنا ─────────────────────────────
