@@ -79,9 +79,63 @@ interface Derived {
     note: string;
 }
 
+interface Governance {
+    conversion: { enabled: boolean | null; formats: string[] };
+    instructions: {
+        enabled: boolean | null;
+        allow_custom: boolean | null;
+        predefined: number | null;
+        max_retries: number | null;
+    };
+    read_confirm: { enabled: boolean | null; token_threshold: number | null };
+    points: {
+        enabled: boolean | null;
+        base_cost: number | null;
+        extra_page_cost: number | null;
+        rescan_discount_pct: number | null;
+        rollover_requires_activity: boolean | null;
+        plan_monthly: Record<string, number>;
+    };
+    pipelines: { key: string; label: string; description: string | null }[];
+}
+
+interface Platform {
+    users: number | null;
+    projects: number | null;
+    active_projects: number | null;
+    archived_projects: number | null;
+    memberships: number | null;
+    transactions: number | null;
+    income: number | null;
+    expense: number | null;
+    volume: number | null;
+    open_receivables: number | null;
+}
+
+interface Service {
+    status: string | null;
+    database: string | null;
+    uptime_seconds: number | null;
+    error: string | null;
+}
+
+interface ComparisonRow {
+    label: string;
+    unit: string;
+    remote: number | null;
+    local: number | null;
+    remote_currency?: string;
+    local_currency?: string;
+    note: string;
+}
+
 interface Snapshot {
     transport: Record<string, Transport>;
     assistant: Assistant | null;
+    governance: Governance | null;
+    platform: Platform | null;
+    service: Service | null;
+    comparison: ComparisonRow[];
     plans: PlanRow[];
     analytics: {
         since: string | null;
@@ -109,6 +163,8 @@ const ENDPOINT_LABELS: Record<string, string> = {
     analytics: 'تحليل الاستهلاك',
     health: 'صحة البنية',
     quotas: 'استثناءات الحصص',
+    platform: 'إحصاءات المنصة',
+    service: 'حالة الخدمة',
 };
 
 /**
@@ -258,6 +314,14 @@ export default function BridgeIndex({
                         </CardBody>
                     </Card>
 
+                    {snapshot.service === null && snapshot.platform === null ? null : (
+                        <PlatformCard platform={snapshot.platform} service={snapshot.service} />
+                    )}
+
+                    {snapshot.comparison.length === 0 ? null : (
+                        <ComparisonCard rows={snapshot.comparison} />
+                    )}
+
                     {snapshot.derived.length === 0 ? null : (
                         <Card>
                             <CardHeader
@@ -292,6 +356,10 @@ export default function BridgeIndex({
 
                     {snapshot.assistant === null ? null : (
                         <AssistantCard assistant={snapshot.assistant} />
+                    )}
+
+                    {snapshot.governance === null ? null : (
+                        <GovernanceCard governance={snapshot.governance} />
                     )}
 
                     {snapshot.plans.length === 0 ? null : <PlansCard plans={snapshot.plans} />}
@@ -596,6 +664,242 @@ function BridgeForm({
             </CardBody>
         </Card>
     );
+}
+
+/** حالة المنصة التي يعمل فيها المساعد — مقروءة كما هي، بلا هوية شخص. */
+function PlatformCard({
+    platform,
+    service,
+}: {
+    platform: Platform | null;
+    service: Service | null;
+}) {
+    return (
+        <Card>
+            <CardHeader
+                title="المنصة والخدمة"
+                description="سياق المشروع الذي يعمل فيه المساعد — مقروء كما هو"
+            />
+            <CardBody className="flex flex-wrap gap-x-8 gap-y-3">
+                {service === null ? null : (
+                    <>
+                        <Fact
+                            label="الخدمة"
+                            value={service.status === 'ok' ? 'تعمل' : (service.status ?? '—')}
+                        />
+                        <Fact
+                            label="قاعدة البيانات"
+                            value={service.database === 'up' ? 'متصلة' : (service.database ?? '—')}
+                        />
+                        <Fact
+                            label="مدة التشغيل"
+                            value={
+                                service.uptime_seconds === null
+                                    ? '—'
+                                    : formatDuration(service.uptime_seconds)
+                            }
+                        />
+                    </>
+                )}
+
+                {platform === null ? null : (
+                    <>
+                        <Fact label="المشتركون" value={countOrDash(platform.users)} />
+                        <Fact
+                            label="المشاريع"
+                            value={
+                                platform.projects === null
+                                    ? '—'
+                                    : `${formatNumber(platform.projects)} · ${formatNumber(platform.active_projects ?? 0)} نشط`
+                            }
+                        />
+                        <Fact label="العضويات" value={countOrDash(platform.memberships)} />
+                        <Fact label="الحركات" value={countOrDash(platform.transactions)} />
+                        <Fact
+                            label="حجم الحركة"
+                            value={
+                                platform.volume === null
+                                    ? '—'
+                                    : `${formatCompact(platform.volume)} ر.س`
+                            }
+                        />
+                        <Fact label="ذمم مفتوحة" value={countOrDash(platform.open_receivables)} />
+                    </>
+                )}
+            </CardBody>
+        </Card>
+    );
+}
+
+/**
+ * ما يقوله المشروع عن نفسه بجانب ما سجّله هاي روت عنه.
+ *
+ * الفجوة معلومةٌ في ذاتها لا خطأ يُخفى: هاي روت لا يرى إلا ما رفعه إليه
+ * المشروع، وموازين لا يعدّ ما لا يمرّ بوحدة ذكائه. ولذلك «لا يرصده» تُكتب
+ * صراحةً بدل صفرٍ يُقرأ قياسًا.
+ */
+function ComparisonCard({ rows }: { rows: ComparisonRow[] }) {
+    const money = (value: number, currency: string | undefined) =>
+        currency === 'USD' ? `$${formatNumber(value, 2)}` : `${formatNumber(value, 2)} ر.س`;
+
+    return (
+        <Card>
+            <CardHeader
+                title="المصدران جنبًا إلى جنب"
+                description="ما يقوله موازين عن نفسه، وما سجّله هاي روت عنه — والفجوة بينهما معلومة لا عطل"
+            />
+            <CardBody className="overflow-x-auto">
+                <table className="w-full text-caption">
+                    <thead>
+                        <tr className="border-b border-border-default text-fg-muted">
+                            <th className="p-2 text-start font-medium">المؤشر</th>
+                            <th className="p-2 text-start font-medium">موازين يقول</th>
+                            <th className="p-2 text-start font-medium">هاي روت سجّل</th>
+                            <th className="p-2 text-start font-medium">ملاحظة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((row) => (
+                            <tr key={row.label} className="border-b border-border-default/60">
+                                <td className="p-2 font-bold text-fg-default">{row.label}</td>
+                                <td className="p-2 text-fg-default tabular-nums">
+                                    {row.remote === null ? (
+                                        <span className="text-fg-subtle">لا يرصده</span>
+                                    ) : row.unit === 'money' ? (
+                                        money(row.remote, row.remote_currency)
+                                    ) : (
+                                        formatCompact(row.remote)
+                                    )}
+                                </td>
+                                <td className="p-2 text-fg-default tabular-nums">
+                                    {row.local === null ? (
+                                        <span className="text-fg-subtle">لا يرصده</span>
+                                    ) : row.unit === 'money' ? (
+                                        money(row.local, row.local_currency)
+                                    ) : (
+                                        formatCompact(row.local)
+                                    )}
+                                </td>
+                                <td className="p-2 text-fg-subtle">{row.note}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </CardBody>
+        </Card>
+    );
+}
+
+/** حوكمة القراءة والنقاط — إعدادات ذكاءٍ متفرّقة في لوحة موازين، مجموعة هنا. */
+function GovernanceCard({ governance }: { governance: Governance }) {
+    const state = (value: boolean | null) =>
+        value === null ? 'غير معلوم' : value ? 'مفعّل' : 'متوقف';
+
+    return (
+        <Card>
+            <CardHeader
+                title="حوكمة القراءة والنقاط"
+                description="إعدادات ذكاءٍ يملكها موازين — مجموعة هنا في مكان واحد"
+            />
+            <CardBody className="flex flex-col gap-4">
+                <div className="flex flex-wrap gap-x-8 gap-y-3">
+                    <Fact label="تحويل المستندات" value={state(governance.conversion.enabled)} />
+                    <Fact
+                        label="الصيغ المسموحة"
+                        value={
+                            governance.conversion.formats.length === 0
+                                ? 'لا شيء'
+                                : `${formatNumber(governance.conversion.formats.length)} صيغة`
+                        }
+                    />
+                    <Fact
+                        label="التعليمات المسبقة"
+                        value={state(governance.instructions.enabled)}
+                    />
+                    <Fact
+                        label="تعليمات حرّة"
+                        value={state(governance.instructions.allow_custom)}
+                    />
+                    <Fact
+                        label="إعادة المسح شهريًّا"
+                        value={
+                            governance.instructions.max_retries === null
+                                ? '—'
+                                : // ‎-1 في موازين يعني «بلا حدّ» لا «ممنوع».
+                                  governance.instructions.max_retries < 0
+                                  ? 'بلا حدّ'
+                                  : formatNumber(governance.instructions.max_retries)
+                        }
+                    />
+                    <Fact
+                        label="تأكيد القراءة الكبيرة"
+                        value={state(governance.read_confirm.enabled)}
+                    />
+                    <Fact
+                        label="عتبة التأكيد"
+                        value={
+                            governance.read_confirm.token_threshold === null
+                                ? '—'
+                                : `${formatCompact(governance.read_confirm.token_threshold)} رمز`
+                        }
+                    />
+                    <Fact label="محرّك النقاط" value={state(governance.points.enabled)} />
+                    <Fact
+                        label="خصم إعادة المسح"
+                        value={
+                            governance.points.rescan_discount_pct === null
+                                ? '—'
+                                : `${formatNumber(governance.points.rescan_discount_pct)}%`
+                        }
+                    />
+                </div>
+
+                {governance.pipelines.length === 0 ? null : (
+                    <div className="flex flex-col gap-2">
+                        <span className="text-caption font-bold text-fg-muted">مسارات القراءة</span>
+                        <ul className="grid gap-2 md:grid-cols-2">
+                            {governance.pipelines.map((pipeline) => (
+                                <li
+                                    key={pipeline.key}
+                                    className="rounded-card border border-border-default p-2.5"
+                                >
+                                    <p className="text-caption font-bold text-fg-default">
+                                        {pipeline.label}
+                                    </p>
+                                    {pipeline.description === null ? null : (
+                                        <p className="mt-0.5 text-micro text-fg-subtle">
+                                            {pipeline.description}
+                                        </p>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </CardBody>
+        </Card>
+    );
+}
+
+function countOrDash(value: number | null): string {
+    return value === null ? '—' : formatNumber(value);
+}
+
+/** «٣ ساعات و١٢ دقيقة» — مدة تشغيل الخدمة تُقرأ زمنًا لا عدد ثوانٍ. */
+function formatDuration(seconds: number): string {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (days > 0) {
+        return `${formatNumber(days)} يوم · ${formatNumber(hours)} س`;
+    }
+
+    if (hours > 0) {
+        return `${formatNumber(hours)} س · ${formatNumber(minutes)} د`;
+    }
+
+    return `${formatNumber(minutes)} د`;
 }
 
 function Fact({ label, value }: { label: string; value: string }) {

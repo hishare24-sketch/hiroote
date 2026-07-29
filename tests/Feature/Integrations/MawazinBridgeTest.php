@@ -52,7 +52,7 @@ class MawazinBridgeTest extends TestCase
 
         $logins = 0;
 
-        Http::assertSentCount(5);
+        Http::assertSentCount(7);
         foreach (Http::recorded() as [$request]) {
             if (str_contains($request->url(), '/auth/login')) {
                 $logins++;
@@ -138,6 +138,46 @@ class MawazinBridgeTest extends TestCase
                 ->where('snapshot.plans.5.unlimited', true)
                 ->where('bridge.status', 'متصل')
                 ->has('snapshot.derived'));
+    }
+
+    #[Test]
+    public function the_screen_reads_platform_context_and_read_governance_too(): void
+    {
+        // استهلاكٌ مرتفع على منصةٍ نائمة غيرُه على منصةٍ تضاعف مشاريعها.
+        $this->fakeMawazin();
+        $this->bridge();
+
+        $this->actingAs($this->manager)
+            ->get('/bridge')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('snapshot.platform.projects', 42)
+                ->where('snapshot.platform.active_projects', 30)
+                ->where('snapshot.service.database', 'up')
+                ->where('snapshot.governance.instructions.allow_custom', false)
+                // ‎-1 يصل كما هو، والشاشة تترجمه «بلا حدّ» لا «ممنوع».
+                ->where('snapshot.governance.instructions.max_retries', -1)
+                ->where('snapshot.governance.pipelines.0.key', 'fast'));
+    }
+
+    #[Test]
+    public function the_two_sources_are_shown_side_by_side_and_a_blind_spot_says_so(): void
+    {
+        // الفجوة بين ما يقوله المشروع وما سجّله هاي روت معلومةٌ في ذاتها؛
+        // وصفرٌ مكان «لا يرصده» يُقرأ قياسًا فيُبنى عليه قرار.
+        $this->fakeMawazin();
+        $this->bridge();
+
+        $this->actingAs($this->manager)
+            ->get('/bridge')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('snapshot.comparison.0.label', 'الرموز')
+                ->where('snapshot.comparison.0.remote', 900000)
+                ->where('snapshot.comparison.0.local', 0)
+                // موازين لا يعرض عدد المحادثات في نقاطه المقروءة.
+                ->where('snapshot.comparison.2.remote', null)
+                ->where('snapshot.comparison.2.local', 0));
     }
 
     #[Test]
@@ -377,6 +417,27 @@ class MawazinBridgeTest extends TestCase
                 'embeddingsEnabled' => false,
                 'docMaxReads' => 12,
                 'levelTokens' => [1 => 800, 2 => 1600, 3 => 3200],
+                'docConversion' => ['enabled' => true, 'formats' => ['docx', 'xlsx']],
+                'docInstructions' => [
+                    'enabled' => true,
+                    'allowCustom' => false,
+                    'predefined' => [['id' => 'financial', 'label' => 'مالية', 'text' => '…']],
+                    // ‎-1 = بلا حدّ في موازين، لا منعًا.
+                    'maxRetriesPerMonth' => -1,
+                ],
+                'readConfirm' => ['enabled' => false, 'tokenThreshold' => 60000],
+                'pointsConfig' => [
+                    'enabled' => true,
+                    'baseCost' => 2,
+                    'extraPageCost' => 0.5,
+                    'rescanDiscountPct' => 40,
+                    'rolloverRequiresActivity' => true,
+                    'planMonthlyPoints' => ['free' => 20, 'diamond' => -1],
+                ],
+                'readingPipelines' => [
+                    ['key' => 'fast', 'label' => 'سريع', 'description' => 'استخراج خفيف'],
+                    ['key' => 'deep', 'label' => 'متعمّق', 'description' => 'قراءة كاملة'],
+                ],
                 'planQuotas' => [
                     'free' => ['maxTokensPerRequest' => 1024, 'dailyTokens' => 20000, 'weeklyTokens' => 80000, 'monthlyTokens' => 200000],
                     'bronze' => ['maxTokensPerRequest' => 2048, 'dailyTokens' => 60000, 'weeklyTokens' => 300000, 'monthlyTokens' => 900000],
@@ -400,6 +461,24 @@ class MawazinBridgeTest extends TestCase
             ]),
             self::BASE.'/ai/health' => $this->wrapped(['status' => 'ok']),
             self::BASE.'/ai/user-quotas' => $this->wrapped([]),
+            self::BASE.'/admin/stats' => $this->wrapped([
+                'totalUsers' => 128,
+                'totalProjects' => 42,
+                'activeProjects' => 30,
+                'archivedProjects' => 4,
+                'totalMemberships' => 310,
+                'txCount' => 980,
+                'income' => 125000.5,
+                'expense' => 40000.25,
+                'totalVolume' => 165000.75,
+                'openReceivables' => 7,
+            ]),
+            self::BASE.'/health' => $this->wrapped([
+                'status' => 'ok',
+                'service' => 'mazeen-api',
+                'db' => 'up',
+                'uptime' => 9000,
+            ]),
         ]);
     }
 

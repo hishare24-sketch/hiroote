@@ -54,6 +54,10 @@ class MawazinBridge
             'analytics' => $this->get($bridge, '/ai/usage-analytics', ['days' => 30]),
             'health' => $this->get($bridge, '/ai/health'),
             'quotas' => $this->get($bridge, '/ai/user-quotas'),
+            // خارج وحدة الذكاء: سياقُ المنصة التي يعمل فيها المساعد. استهلاكٌ
+            // مرتفع على منصةٍ نائمة غيرُه على منصةٍ تضاعف مشاريعها.
+            'platform' => $this->get($bridge, '/admin/stats'),
+            'service' => $this->get($bridge, '/health'),
         ];
     }
 

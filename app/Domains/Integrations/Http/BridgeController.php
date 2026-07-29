@@ -6,11 +6,15 @@ namespace App\Domains\Integrations\Http;
 
 use App\Domains\Administration\Actions\RecordAuditEntry;
 use App\Domains\Administration\DTOs\AuditEntry;
+use App\Domains\Analytics\Models\CostUsageRecord;
+use App\Domains\Analytics\Models\TokenUsageRecord;
+use App\Domains\Conversations\Models\Conversation;
 use App\Domains\Integrations\DTOs\BridgeResult;
 use App\Domains\Integrations\Models\ProjectBridge;
 use App\Domains\Integrations\Services\ConnectionMethods;
 use App\Domains\Integrations\Services\MawazinBridge;
 use App\Domains\Integrations\Services\MawazinPresenter;
+use App\Domains\Projects\Models\Project;
 use App\Domains\Projects\Services\CurrentProject;
 use App\Http\Controllers\Controller;
 use App\Support\Http\SystemStatus;
@@ -65,7 +69,9 @@ class BridgeController extends Controller
                 'last_error_at' => $bridge->last_error_at?->toIso8601String(),
             ],
             'methods' => $this->methods->forProject($project),
-            'snapshot' => $snapshot === [] ? null : $this->presenter->present($snapshot),
+            'snapshot' => $snapshot === []
+                ? null
+                : $this->presenter->present($snapshot, $this->localFigures($project)),
             'fetchedAt' => now()->toIso8601String(),
         ]);
     }
@@ -117,6 +123,29 @@ class BridgeController extends Controller
         ));
 
         return back()->with('success', 'حُفظ إعداد الجسر.');
+    }
+
+    /**
+     * ما سجّله هاي روت عن هذا المشروع — ليُقرأ بجانب ما يقوله المشروع عن نفسه.
+     *
+     * تُحسب لحظة العرض لا تُقرأ من آخر حفظ، ويُصرَّح بعملتها: الفجوة بين
+     * الرقمين معلومةٌ في ذاتها (أحد الطرفين لا يُغذّى)، لا خطأ يُخفى.
+     *
+     * @return array{conversations: int, tokens: int, cost: float, currency: string}
+     */
+    private function localFigures(Project $project): array
+    {
+        $tokens = TokenUsageRecord::query()
+            ->forProject($project)
+            ->selectRaw('coalesce(sum(input_tokens + output_tokens + knowledge_tokens + attachment_tokens + tool_tokens), 0) as total')
+            ->value('total');
+
+        return [
+            'conversations' => Conversation::query()->forProject($project)->count(),
+            'tokens' => (int) $tokens,
+            'cost' => round((float) CostUsageRecord::query()->forProject($project)->sum('amount'), 2),
+            'currency' => 'SAR',
+        ];
     }
 
     /**

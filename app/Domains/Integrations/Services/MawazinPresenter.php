@@ -29,9 +29,11 @@ class MawazinPresenter
 
     /**
      * @param  array<string, BridgeResult>  $snapshot
+     * @param  array{conversations?: int, tokens?: int, cost?: float, currency?: string}  $local
+     *                                                                                            ما سجّله هاي روت لهذا المشروع — لمقارنته بما يقوله المشروع عن نفسه.
      * @return array<string, mixed>
      */
-    public function present(array $snapshot): array
+    public function present(array $snapshot, array $local = []): array
     {
         $settings = $snapshot['settings'] ?? null;
         $analytics = $snapshot['analytics'] ?? null;
@@ -42,11 +44,191 @@ class MawazinPresenter
                 $snapshot,
             ),
             'assistant' => $this->assistant($settings),
+            'governance' => $this->governance($settings),
             'plans' => $this->plans($settings),
             'analytics' => $this->analytics($analytics),
             'health' => ($snapshot['health'] ?? null)?->data,
             'quotas' => $this->quotas($snapshot['quotas'] ?? null),
+            'platform' => $this->platform($snapshot['platform'] ?? null),
+            'service' => $this->service($snapshot['service'] ?? null),
             'derived' => $this->derived($settings, $analytics),
+            'comparison' => $this->comparison($analytics, $local),
+        ];
+    }
+
+    /**
+     * حوكمة القراءة والنقاط — إعدادات ذكاءٍ يملكها موازين ولا تظهر في لوحته
+     * مجموعةً في مكان واحد.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function governance(?BridgeResult $result): ?array
+    {
+        $data = $result?->data;
+
+        if ($data === null) {
+            return null;
+        }
+
+        $conversion = is_array($data['docConversion'] ?? null) ? $data['docConversion'] : [];
+        $instructions = is_array($data['docInstructions'] ?? null) ? $data['docInstructions'] : [];
+        $confirm = is_array($data['readConfirm'] ?? null) ? $data['readConfirm'] : [];
+        $points = is_array($data['pointsConfig'] ?? null) ? $data['pointsConfig'] : [];
+
+        return [
+            'conversion' => [
+                'enabled' => $this->flag($conversion, 'enabled'),
+                'formats' => is_array($conversion['formats'] ?? null)
+                    ? array_values(array_filter($conversion['formats'], is_string(...)))
+                    : [],
+            ],
+            'instructions' => [
+                'enabled' => $this->flag($instructions, 'enabled'),
+                'allow_custom' => $this->flag($instructions, 'allowCustom'),
+                'predefined' => is_array($instructions['predefined'] ?? null)
+                    ? count($instructions['predefined'])
+                    : null,
+                // ‎-1 في موازين يعني «بلا حدّ» لا «ممنوع» — والفرق بينهما كامل.
+                'max_retries' => $this->intOrNull($instructions['maxRetriesPerMonth'] ?? null),
+            ],
+            'read_confirm' => [
+                'enabled' => $this->flag($confirm, 'enabled'),
+                'token_threshold' => $this->intOrNull($confirm['tokenThreshold'] ?? null),
+            ],
+            'points' => [
+                'enabled' => $this->flag($points, 'enabled'),
+                'base_cost' => $this->floatOrNull($points['baseCost'] ?? null),
+                'extra_page_cost' => $this->floatOrNull($points['extraPageCost'] ?? null),
+                'rescan_discount_pct' => $this->floatOrNull($points['rescanDiscountPct'] ?? null),
+                'rollover_requires_activity' => $this->flag($points, 'rolloverRequiresActivity'),
+                'plan_monthly' => $this->map($points, 'planMonthlyPoints'),
+            ],
+            'pipelines' => $this->pipelines($data),
+        ];
+    }
+
+    /**
+     * مسارات القراءة بأسمائها لا بعددها.
+     *
+     * @param  array<array-key, mixed>  $data
+     * @return list<array<string, mixed>>
+     */
+    private function pipelines(array $data): array
+    {
+        $rows = [];
+
+        foreach ($this->rows($data, 'readingPipelines') as $pipeline) {
+            $key = $this->text($pipeline, 'key');
+
+            if ($key === null) {
+                continue;
+            }
+
+            $rows[] = [
+                'key' => $key,
+                'label' => $this->text($pipeline, 'label') ?? $key,
+                'description' => $this->text($pipeline, 'description'),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * حالة المنصة التي يعمل فيها المساعد — أرقام مجمَّعة بلا هوية شخص.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function platform(?BridgeResult $result): ?array
+    {
+        $data = $result?->data;
+
+        if ($data === null) {
+            return null;
+        }
+
+        return [
+            'users' => $this->intOrNull($data['totalUsers'] ?? null),
+            'projects' => $this->intOrNull($data['totalProjects'] ?? null),
+            'active_projects' => $this->intOrNull($data['activeProjects'] ?? null),
+            'archived_projects' => $this->intOrNull($data['archivedProjects'] ?? null),
+            'memberships' => $this->intOrNull($data['totalMemberships'] ?? null),
+            'transactions' => $this->intOrNull($data['txCount'] ?? null),
+            'income' => $this->floatOrNull($data['income'] ?? null),
+            'expense' => $this->floatOrNull($data['expense'] ?? null),
+            'volume' => $this->floatOrNull($data['totalVolume'] ?? null),
+            'open_receivables' => $this->intOrNull($data['openReceivables'] ?? null),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function service(?BridgeResult $result): ?array
+    {
+        $data = $result?->data;
+
+        if ($data === null) {
+            return null;
+        }
+
+        return [
+            'status' => $this->text($data, 'status'),
+            'database' => $this->text($data, 'db'),
+            'uptime_seconds' => $this->intOrNull($data['uptime'] ?? null),
+            'error' => $this->text($data, 'error'),
+        ];
+    }
+
+    /**
+     * ما يقوله المشروع عن نفسه بجانب ما سجّله هاي روت عنه.
+     *
+     * الفجوة بين العمودين **ليست خطأ في أحدهما**: هاي روت لا يرى إلا ما رفعه
+     * إليه المشروع عبر جسر الوارد، وموازين لا يعدّ ما لا يمرّ بوحدة ذكائه.
+     * ولذلك يُقال «لا يرصده» صراحةً بدل عرض صفرٍ يُقرأ قياسًا.
+     *
+     * والعملتان لا تُطرح إحداهما من الأخرى — كل صف يحمل وحدته.
+     *
+     * @param  array{conversations?: int, tokens?: int, cost?: float, currency?: string}  $local
+     * @return list<array<string, mixed>>
+     */
+    private function comparison(?BridgeResult $analytics, array $local): array
+    {
+        $stats = $analytics?->data;
+
+        $remoteTokens = is_array($stats)
+            ? array_sum(array_map(
+                fn (array $row): int => $this->intOrNull($row['tokens'] ?? null) ?? 0,
+                $this->rows($stats, 'daily'),
+            ))
+            : null;
+
+        return [
+            [
+                'label' => 'الرموز',
+                'unit' => 'count',
+                'remote' => $remoteTokens,
+                'local' => $local['tokens'] ?? null,
+                'note' => 'موازين يجمعها من حركته، وهاي روت من سجلاته هو',
+            ],
+            [
+                'label' => 'الكلفة',
+                'unit' => 'money',
+                'remote' => is_array($stats) ? $this->floatOrNull($stats['totalCostUsd'] ?? null) : null,
+                'remote_currency' => 'USD',
+                'local' => $local['cost'] ?? null,
+                'local_currency' => $local['currency'] ?? 'SAR',
+                'note' => 'عملتان مختلفتان — تُقرآن جنبًا لا تُطرحان',
+            ],
+            [
+                'label' => 'المحادثات',
+                'unit' => 'count',
+                // نقاط موازين المقروءة لا تحمل عدد محادثات، وإعلانها null يجعل
+                // الشاشة تقول «لا يرصده» بدل أن تعرض صفرًا يُقرأ «لا محادثات».
+                'remote' => null,
+                'local' => $local['conversations'] ?? null,
+                'note' => 'موازين لا يعرضها في نقاطه المقروءة',
+            ],
         ];
     }
 
