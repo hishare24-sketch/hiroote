@@ -181,7 +181,7 @@ export default function BridgeIndex({ systemStatus, project, bridge, snapshot, f
                 </Card>
             )}
 
-            {!editing || !manage ? null : <BridgeForm bridge={bridge} />}
+            {!editing || !manage ? null : <BridgeForm bridge={bridge} project={project} />}
 
             {snapshot === null ? (
                 <EmptyState
@@ -443,7 +443,13 @@ function PlansCard({ plans }: { plans: PlanRow[] }) {
     );
 }
 
-function BridgeForm({ bridge }: { bridge: BridgeRow | null }) {
+function BridgeForm({
+    bridge,
+    project,
+}: {
+    bridge: BridgeRow | null;
+    project: { id: number; name: string };
+}) {
     const form = useForm({
         base_url: bridge?.base_url ?? '',
         auth_mode: bridge?.auth_mode ?? 'service_account',
@@ -457,7 +463,7 @@ function BridgeForm({ bridge }: { bridge: BridgeRow | null }) {
         <Card>
             <CardHeader
                 title="إعداد الاتصال"
-                description="حساب خدمة في موازين بصلاحية قراءة فقط (ai:read و health:read)"
+                description={`سيُربط بالمشروع الحالي: ${project.name} — بدّل المشروع أولًا إن أردت غيره`}
             />
             <CardBody>
                 <form
@@ -467,6 +473,11 @@ function BridgeForm({ bridge }: { bridge: BridgeRow | null }) {
                         form.post('/bridge', { preserveScroll: true });
                     }}
                 >
+                    <Alert tone="info" title="حساب خدمة بصلاحية قراءة فقط">
+                        أنشئ في المشروع الخارجي حسابًا مخصّصًا لهذا الربط بنطاقَي القراءة (ai:read و
+                        health:read) — لا تستعمل حسابك الشخصي.
+                    </Alert>
+
                     <Input
                         label="عنوان الواجهة"
                         dir="ltr"
