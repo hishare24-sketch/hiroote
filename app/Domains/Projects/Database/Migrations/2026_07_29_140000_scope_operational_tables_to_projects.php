@@ -134,6 +134,41 @@ return new class extends Migration
     }
 
     /**
+     * يمنح كل مستخدم قائم عضويةً في المشروع الافتراضي بدوره الحالي.
+     *
+     * بدون هذا تُغلق الترقية النظامَ على أهله: الدور صار يُقرأ من العضوية
+     * (ADR-0003 §3)، فمستخدمٌ بلا صفٍّ في `project_user` يفقد كل صلاحياته
+     * ويقابله 403 في كل شاشة — بما فيهم من يملك صلاحية إعادة منحها.
+     *
+     * الدور المنقول هو `users.role` نفسه: قبل الهجرة كان نافذًا في كل مكان،
+     * وبعدها ينفذ في المشروع الوحيد. لا تصعيد صلاحية ولا خفضها.
+     */
+    private function grantExistingUsersMembership(int $projectId): void
+    {
+        $rows = DB::table('users')
+            ->whereNotExists(fn ($query) => $query
+                ->selectRaw('1')
+                ->from('project_user')
+                ->whereColumn('project_user.user_id', 'users.id')
+                ->where('project_user.project_id', $projectId))
+            ->get(['id', 'role']);
+
+        if ($rows->isEmpty()) {
+            return;
+        }
+
+        DB::table('project_user')->insert(
+            $rows->map(fn (object $user): array => [
+                'project_id' => $projectId,
+                'user_id' => $user->id,
+                'role' => $user->role,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ])->all(),
+        );
+    }
+
+    /**
      * ينسب الصفوف القائمة إلى المشروع الافتراضي.
      *
      * جدولا الاستهلاك يرفضان أي UPDATE بحكم الـ trigger، فيُعطَّل الـ trigger
@@ -142,6 +177,8 @@ return new class extends Migration
      */
     private function backfill(int $projectId): void
     {
+        $this->grantExistingUsersMembership($projectId);
+
         foreach (self::DIRECT as $table) {
             DB::table($table)->whereNull('project_id')->update(['project_id' => $projectId]);
         }
