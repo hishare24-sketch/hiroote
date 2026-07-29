@@ -33,5 +33,7 @@ class DatabaseSeeder extends Seeder
                 'email' => "{$role->value}@hiroote.test",
             ]);
         }
+
+        $this->call(ProvidersSeeder::class);
     }
 }
