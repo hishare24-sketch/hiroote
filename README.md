@@ -23,6 +23,9 @@ composer dev                      # serve + queue + logs + vite معًا
 
 ثم افتح `http://localhost:8000` وسجل الدخول بـ `admin@hiroote.test`.
 
+> **ويندوز / Laravel Herd:** لا يحتاج المشروع امتداد `phpredis`؛ الافتراضي `REDIS_CLIENT=predis`
+> وهو عميل مكتوب بالكامل بـ PHP. حوّله إلى `phpredis` في الإنتاج للحصول على أداء أعلى.
+
 ## بوابات الجودة
 
 ```bash
