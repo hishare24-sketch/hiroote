@@ -11,6 +11,7 @@ use App\Domains\Conversations\Http\ConversationsController;
 use App\Domains\Conversations\Http\EscalationsController;
 use App\Domains\Integrations\Http\BridgeController;
 use App\Domains\Knowledge\Http\KnowledgeController;
+use App\Domains\Orchestrator\Http\PlaygroundController;
 use App\Domains\Projects\Http\ProjectsController;
 use App\Domains\Projects\Http\SwitchProjectController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -147,6 +148,14 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/alerts/evaluate', [AlertsController::class, 'evaluate'])->name('alerts.evaluate');
         Route::post('/alerts/events/{event}', [AlertsController::class, 'resolveEvent'])
             ->name('alerts.events.resolve');
+    });
+
+    Route::middleware('permission:assistants.view')->group(function (): void {
+        Route::get('/playground', [PlaygroundController::class, 'index'])->name('playground.index');
+    });
+
+    Route::middleware('permission:assistants.manage')->group(function (): void {
+        Route::post('/playground', [PlaygroundController::class, 'run'])->name('playground.run');
     });
 
     Route::middleware('permission:users.view')->group(function (): void {

@@ -69,6 +69,7 @@ class ScreenHelpTest extends TestCase
             "/knowledge/sections/{$section->id}",
             "/knowledge/items/{$item->id}/versions",
             '/bridge',
+            '/playground',
             '/alerts',
             '/audit',
             '/users',

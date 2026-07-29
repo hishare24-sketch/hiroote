@@ -37,6 +37,7 @@ class NavigationTest extends TestCase
             '/audit',
             '/alerts',
             '/bridge',
+            '/playground',
             '/projects',
             '/users',
         ] as $path) {
