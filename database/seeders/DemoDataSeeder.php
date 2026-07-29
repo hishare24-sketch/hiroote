@@ -55,6 +55,15 @@ class DemoDataSeeder extends Seeder
                 continue;
             }
 
+            // إعادة الزرع لا تُضاعف الحركة: مشروعٌ فيه محادثات سلفًا يُترك كما
+            // هو. ٩٥ محادثة تصير ١٩٠ فتتضاعف كل نسبة على اللوحة بلا سبب ظاهر،
+            // ورقمٌ مضاعَف يُقرأ قياسًا لا خطأ زرع.
+            if (Conversation::query()->where('project_id', $project->id)->exists()) {
+                $this->command->info("«{$project->name}» فيه بيانات تجريبية سلفًا — تُركت كما هي.");
+
+                continue;
+            }
+
             UsageBudget::query()->firstOrCreate(
                 ['project_id' => $project->id, 'scope' => 'platform', 'scope_key' => null],
                 ['monthly_limit' => $slug === 'hi-share' ? '6750.00' : '3200.00', 'currency' => 'SAR'],
