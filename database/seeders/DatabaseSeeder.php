@@ -40,5 +40,7 @@ class DatabaseSeeder extends Seeder
         $this->call(SectionsSeeder::class);
         $this->call(DemoDataSeeder::class);
         $this->call(KnowledgeSeeder::class);
+        // بعد الجميع: قواعد التنبيه تُقيَّم على البيانات المزروعة قبلها.
+        $this->call(AlertsSeeder::class);
     }
 }

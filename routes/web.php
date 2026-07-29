@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domains\Alerts\Http\AlertsController;
 use App\Domains\Analytics\Http\UsageController;
 use App\Domains\Assistants\Http\AssistantsController;
 use App\Domains\Assistants\Http\SectionsController;
@@ -105,10 +106,23 @@ Route::middleware('auth')->group(function (): void {
             ->name('knowledge.feedback.resolve');
     });
 
+    Route::middleware('permission:alerts.view')->group(function (): void {
+        Route::get('/alerts', [AlertsController::class, 'index'])->name('alerts.index');
+    });
+
+    Route::middleware('permission:alerts.manage')->group(function (): void {
+        Route::post('/alerts', [AlertsController::class, 'store'])->name('alerts.store');
+        Route::put('/alerts/{rule}', [AlertsController::class, 'update'])->name('alerts.update');
+        Route::delete('/alerts/{rule}', [AlertsController::class, 'destroy'])->name('alerts.destroy');
+        Route::post('/alerts/{rule}/test', [AlertsController::class, 'test'])->name('alerts.test');
+        Route::post('/alerts/evaluate', [AlertsController::class, 'evaluate'])->name('alerts.evaluate');
+        Route::post('/alerts/events/{event}', [AlertsController::class, 'resolveEvent'])
+            ->name('alerts.events.resolve');
+    });
+
     // الشاشات المخططة لمراحل لاحقة — تعرض نطاقها بدل خطأ 404، ويستبدل كل
     // مسار بمتحكمه الحقيقي عند تنفيذ مرحلته.
     $planned = [
-        'alerts' => 'alerts.view',
         'users' => 'users.view',
     ];
 
