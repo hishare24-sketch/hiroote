@@ -50,22 +50,22 @@ export function StatCard({
                 className,
             )}
         >
-            <div className="flex items-center gap-3">
+            <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 flex-1 text-body font-medium text-balance text-fg-muted">
+                    {label}
+                </p>
                 <span
                     aria-hidden
                     className={cn(
-                        'flex size-10 shrink-0 items-center justify-center rounded-control',
+                        'flex size-9 shrink-0 items-center justify-center rounded-control',
                         ICON_TONES[tone],
                     )}
                 >
-                    <Icon className="size-5" />
+                    <Icon className="size-[18px]" />
                 </span>
-                <p className="min-w-0 flex-1 truncate text-body font-medium text-fg-muted">
-                    {label}
-                </p>
             </div>
 
-            <div>
+            <div className="mt-auto">
                 <p className="text-metric font-bold text-fg-default">{value}</p>
                 {caption !== undefined ? (
                     <p className="mt-1.5 text-caption text-fg-muted">{caption}</p>
