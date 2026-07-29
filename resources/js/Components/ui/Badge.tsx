@@ -1,7 +1,8 @@
-import type { StatusTone } from '@/types';
+import type { Tone } from '@/types';
 import { cn } from '@/lib/cn';
 
-const TONES: Record<StatusTone, string> = {
+const TONES: Record<Tone, string> = {
+    accent: 'bg-accent-soft text-accent',
     success: 'bg-success-soft text-success',
     warning: 'bg-warning-soft text-warning',
     danger: 'bg-danger-soft text-danger',
@@ -9,7 +10,8 @@ const TONES: Record<StatusTone, string> = {
     neutral: 'bg-neutral-soft text-neutral',
 };
 
-const DOTS: Record<StatusTone, string> = {
+const DOTS: Record<Tone, string> = {
+    accent: 'bg-accent',
     success: 'bg-success',
     warning: 'bg-warning',
     danger: 'bg-danger',
@@ -18,7 +20,7 @@ const DOTS: Record<StatusTone, string> = {
 };
 
 export interface BadgeProps {
-    tone?: StatusTone;
+    tone?: Tone;
     /**
      * Renders a status dot next to the label. The label still carries the
      * meaning — colour alone never does (وثيقة 03 §6).

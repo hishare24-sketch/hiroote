@@ -67,6 +67,9 @@ export interface SharedProps {
 /** The five status colours fixed by وثيقة 03 §5. */
 export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
+/** نغمة تشمل لون الهوية إضافةً إلى الحالات الخمس — للشارات والبطاقات. */
+export type Tone = StatusTone | 'accent';
+
 /** The nine states every component must cover (وثيقة التصميم §18). */
 export type ViewState =
     | 'normal'

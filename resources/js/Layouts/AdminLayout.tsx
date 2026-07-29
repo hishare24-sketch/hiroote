@@ -18,20 +18,10 @@ interface NavItem {
 /** هيكل التنقل الرئيسي — وثيقة التصميم §3. */
 const NAV_ITEMS: NavItem[] = [
     { label: 'نظرة عامة', href: '/', permission: 'overview.view' },
-    {
-        label: 'الأداء والمحادثات',
-        href: '/conversations',
-        permission: 'conversations.view',
-        planned: true,
-    },
-    { label: 'الاستهلاك والتكلفة', href: '/usage', permission: 'usage.view', planned: true },
+    { label: 'الأداء والمحادثات', href: '/conversations', permission: 'conversations.view' },
+    { label: 'الاستهلاك والتكلفة', href: '/usage', permission: 'usage.view' },
     { label: 'المزودون والنماذج', href: '/providers', permission: 'providers.view' },
-    {
-        label: 'التحويل والتصعيد',
-        href: '/escalations',
-        permission: 'escalations.view',
-        planned: true,
-    },
+    { label: 'التحويل والتصعيد', href: '/escalations', permission: 'escalations.view' },
     { label: 'مستويات المساعد', href: '/assistants', permission: 'assistants.view', planned: true },
     {
         label: 'تكامل الأقسام',

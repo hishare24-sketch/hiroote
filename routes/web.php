@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Domains\Analytics\Http\UsageController;
+use App\Domains\Conversations\Http\ConversationsController;
+use App\Domains\Conversations\Http\EscalationsController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\PlannedScreenController;
@@ -21,12 +24,23 @@ Route::middleware('auth')->group(function (): void {
         ->middleware('permission:overview.view')
         ->name('overview');
 
+    Route::middleware('permission:conversations.view')->group(function (): void {
+        Route::get('/conversations', [ConversationsController::class, 'index'])->name('conversations.index');
+        Route::get('/conversations/{conversation}', [ConversationsController::class, 'show'])
+            ->name('conversations.show');
+    });
+
+    Route::get('/usage', UsageController::class)
+        ->middleware('permission:usage.view')
+        ->name('usage.index');
+
+    Route::get('/escalations', EscalationsController::class)
+        ->middleware('permission:escalations.view')
+        ->name('escalations.index');
+
     // الشاشات المخططة لمراحل لاحقة — تعرض نطاقها بدل خطأ 404، ويستبدل كل
     // مسار بمتحكمه الحقيقي عند تنفيذ مرحلته.
     $planned = [
-        'conversations' => 'conversations.view',
-        'usage' => 'usage.view',
-        'escalations' => 'escalations.view',
         'assistants' => 'assistants.view',
         'integrations' => 'integrations.view',
         'knowledge' => 'knowledge.view',
