@@ -1,0 +1,157 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+ * Design tokens — وثيقة 03 §5
+ * شبكة 8px، ألوان حالات ثابتة، وضعان فاتح وداكن، RTL افتراضي.
+ * Semantic names only: components never reference a raw palette step, so a
+ * palette change stays a one-file change.
+ * ------------------------------------------------------------------------ */
+@theme {
+    --font-sans:
+        'IBM Plex Sans Arabic', 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Noto Color Emoji';
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    /* شبكة 8px */
+    --spacing: 0.5rem;
+
+    --radius-card: 0.75rem;
+    --radius-control: 0.5rem;
+
+    /* الهوية */
+    --color-brand-50: oklch(0.97 0.02 250);
+    --color-brand-100: oklch(0.93 0.04 250);
+    --color-brand-200: oklch(0.87 0.07 250);
+    --color-brand-300: oklch(0.78 0.11 250);
+    --color-brand-400: oklch(0.68 0.15 250);
+    --color-brand-500: oklch(0.58 0.18 250);
+    --color-brand-600: oklch(0.5 0.17 250);
+    --color-brand-700: oklch(0.42 0.14 250);
+    --color-brand-800: oklch(0.34 0.11 250);
+    --color-brand-900: oklch(0.27 0.08 250);
+
+    /* حالات ألوان ثابتة: success, warning, danger, info, neutral */
+    --color-success: oklch(0.55 0.14 150);
+    --color-warning: oklch(0.55 0.13 75);
+    --color-danger: oklch(0.53 0.19 25);
+    --color-info: oklch(0.53 0.14 250);
+    --color-neutral: oklch(0.5 0.01 260);
+}
+
+@layer base {
+    :root {
+        --color-surface-base: oklch(0.98 0.003 260);
+        --color-surface-raised: oklch(1 0 0);
+        --color-surface-sunken: oklch(0.95 0.005 260);
+        --color-surface-overlay: oklch(1 0 0);
+
+        --color-fg-default: oklch(0.25 0.01 260);
+        --color-fg-muted: oklch(0.48 0.01 260);
+        --color-fg-subtle: oklch(0.58 0.01 260);
+        --color-fg-inverted: oklch(0.99 0 0);
+
+        --color-border-default: oklch(0.9 0.005 260);
+        --color-border-strong: oklch(0.8 0.008 260);
+
+        --color-focus-ring: oklch(0.5 0.17 250);
+
+        --color-success-soft: oklch(0.95 0.04 150);
+        --color-warning-soft: oklch(0.96 0.05 75);
+        --color-danger-soft: oklch(0.95 0.04 25);
+        --color-info-soft: oklch(0.95 0.03 250);
+        --color-neutral-soft: oklch(0.95 0.005 260);
+    }
+
+    .dark {
+        --color-surface-base: oklch(0.19 0.008 260);
+        --color-surface-raised: oklch(0.23 0.01 260);
+        --color-surface-sunken: oklch(0.16 0.008 260);
+        --color-surface-overlay: oklch(0.25 0.01 260);
+
+        --color-fg-default: oklch(0.96 0.004 260);
+        --color-fg-muted: oklch(0.76 0.008 260);
+        --color-fg-subtle: oklch(0.64 0.008 260);
+        --color-fg-inverted: oklch(0.19 0.008 260);
+
+        --color-border-default: oklch(0.32 0.01 260);
+        --color-border-strong: oklch(0.44 0.012 260);
+
+        --color-focus-ring: oklch(0.75 0.13 250);
+
+        /* Status hues lighten on dark so text on them still clears AA. */
+        --color-success: oklch(0.74 0.15 150);
+        --color-warning: oklch(0.79 0.14 75);
+        --color-danger: oklch(0.7 0.17 25);
+        --color-info: oklch(0.72 0.13 250);
+        --color-neutral: oklch(0.72 0.01 260);
+
+        /* Soft fills darken rather than lighten against a dark base. */
+        --color-success-soft: oklch(0.28 0.05 150);
+        --color-warning-soft: oklch(0.3 0.06 75);
+        --color-danger-soft: oklch(0.28 0.07 25);
+        --color-info-soft: oklch(0.28 0.05 250);
+        --color-neutral-soft: oklch(0.27 0.008 260);
+    }
+
+    * {
+        border-color: var(--color-border-default);
+    }
+
+    /* وثيقة 03 §6 — Focus واضح ومرئي في الوضعين. */
+    :focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+/* Exposes the base-layer variables above as Tailwind colour utilities
+ * (bg-surface-raised, text-fg-muted, …) without duplicating their values. */
+@theme inline {
+    --color-surface-base: var(--color-surface-base);
+    --color-surface-raised: var(--color-surface-raised);
+    --color-surface-sunken: var(--color-surface-sunken);
+    --color-surface-overlay: var(--color-surface-overlay);
+
+    --color-fg-default: var(--color-fg-default);
+    --color-fg-muted: var(--color-fg-muted);
+    --color-fg-subtle: var(--color-fg-subtle);
+    --color-fg-inverted: var(--color-fg-inverted);
+
+    --color-border-default: var(--color-border-default);
+    --color-border-strong: var(--color-border-strong);
+
+    --color-success-soft: var(--color-success-soft);
+    --color-warning-soft: var(--color-warning-soft);
+    --color-danger-soft: var(--color-danger-soft);
+    --color-info-soft: var(--color-info-soft);
+    --color-neutral-soft: var(--color-neutral-soft);
+}
+
+@utility skeleton-pulse {
+    animation: skeleton-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes skeleton-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.45;
+    }
+}

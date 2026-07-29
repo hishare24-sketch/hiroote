@@ -1,0 +1,35 @@
+# بيئة التطوير المحلية — وثيقة 05 §10 (البيئات: local, test, staging, production)
+# التطبيق يعمل عبر `php artisan serve` أو Sail لاحقًا؛ هذه الخدمات المساندة فقط.
+services:
+    pgsql:
+        image: postgres:16-alpine
+        ports:
+            - '${FORWARD_DB_PORT:-5432}:5432'
+        environment:
+            POSTGRES_DB: '${DB_DATABASE:-hiroote}'
+            POSTGRES_USER: '${DB_USERNAME:-hiroote}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD:-secret}'
+        volumes:
+            - pgsql-data:/var/lib/postgresql/data
+            - ./docker/pgsql/create-test-db.sql:/docker-entrypoint-initdb.d/10-create-test-db.sql
+        healthcheck:
+            test: ['CMD', 'pg_isready', '-q', '-d', '${DB_DATABASE:-hiroote}', '-U', '${DB_USERNAME:-hiroote}']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    redis:
+        image: redis:7-alpine
+        ports:
+            - '${FORWARD_REDIS_PORT:-6379}:6379'
+        volumes:
+            - redis-data:/data
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+volumes:
+    pgsql-data:
+    redis-data:

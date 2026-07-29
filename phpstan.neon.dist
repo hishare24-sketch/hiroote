@@ -1,0 +1,13 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    # المستوى المعتمد — وثيقة 03 §9. رفعه لاحقًا قرار معماري يمر عبر PR.
+    level: 8
+
+    paths:
+        - app
+        - database
+        - routes
+        - bootstrap/app.php
+        - bootstrap/providers.php
