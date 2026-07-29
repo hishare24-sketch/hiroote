@@ -12,13 +12,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import type { StatusTone } from '@/types';
-import type {
-    AlertEventRow,
-    AlertOptions,
-    AlertRuleRow,
-    MetricOption,
-    MetricUnit,
-} from '@/types/alerts';
+import type { AlertEventRow, AlertOptions, AlertRuleRow, MetricOption } from '@/types/alerts';
 import { AdminLayout } from '@/Layouts/AdminLayout';
 import { Alert } from '@/Components/ui/Alert';
 import { Badge } from '@/Components/ui/Badge';
@@ -31,10 +25,10 @@ import { RuleDialog } from './RuleDialog';
 import { usePermissions } from '@/Hooks/usePermissions';
 import {
     formatDateTime,
-    formatLatency,
-    formatMoney,
+    formatMetric,
     formatNumber,
     formatRelative,
+    formatWindow,
 } from '@/lib/format';
 import { cn } from '@/lib/cn';
 
@@ -45,38 +39,6 @@ interface Props {
     events: AlertEventRow[];
     metrics: MetricOption[];
     options: AlertOptions;
-}
-
-/** تنسيق قيمة المؤشر بوحدتها — العدد وحده لا يقول إن كان نسبةً أو ريالًا. */
-export function formatMetric(value: number, unit: MetricUnit): string {
-    switch (unit) {
-        case 'percent':
-            return `${formatNumber(value, Number.isInteger(value) ? 0 : 1)}%`;
-        case 'money':
-            return formatMoney(value);
-        case 'milliseconds':
-            return formatLatency(value);
-        case 'rating':
-            return `${formatNumber(value, 1)} من 5`;
-        default:
-            return formatNumber(value);
-    }
-}
-
-export function formatWindow(minutes: number): string {
-    if (minutes === 0) {
-        return 'قيمة لحظية';
-    }
-
-    if (minutes < 60) {
-        return `آخر ${formatNumber(minutes)} دقيقة`;
-    }
-
-    if (minutes < 1440) {
-        return `آخر ${formatNumber(minutes / 60)} ساعة`;
-    }
-
-    return `آخر ${formatNumber(minutes / 1440)} يوم`;
 }
 
 /** شاشة التنبيهات — وثيقة 06 §11. */

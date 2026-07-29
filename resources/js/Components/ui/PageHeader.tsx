@@ -1,4 +1,5 @@
 import type { StatusTone } from '@/types';
+import { HelpPanel } from '@/Components/ui/HelpPanel';
 import { cn } from '@/lib/cn';
 
 const PILL_TONES: Record<StatusTone, string> = {
@@ -18,13 +19,22 @@ export interface PageHeaderProps {
     actions?: React.ReactNode;
 }
 
-/** ترويسة الشاشة الموحدة — وثيقة التصميم §4. */
+/**
+ * ترويسة الشاشة الموحدة — وثيقة التصميم §4.
+ *
+ * أيقونة الشرح هنا لا في كل صفحة: كل شاشة تستعمل هذه الترويسة، فتحصل على
+ * شرحها بلا أن يتذكّر أحد إضافته، ولا تُنسى في الشاشة الثالثة عشرة.
+ */
 export function PageHeader({ title, description, systemStatus, period, actions }: PageHeaderProps) {
     return (
         <header className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-border-default bg-surface-raised px-6 py-4">
-            <div className="min-w-0">
-                <h1 className="truncate text-display font-bold text-fg-default">{title}</h1>
-                <p className="mt-0.5 text-caption text-fg-muted">{description}</p>
+            <div className="flex min-w-0 items-start gap-1.5">
+                <div className="min-w-0">
+                    <h1 className="truncate text-display font-bold text-fg-default">{title}</h1>
+                    <p className="mt-0.5 text-caption text-fg-muted">{description}</p>
+                </div>
+
+                <HelpPanel />
             </div>
 
             <div className="flex flex-wrap items-center gap-2">

@@ -25,6 +25,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Unique;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 /**
  * مصفوفة تكامل أقسام المشروع — وثيقة 06 §14.
@@ -135,7 +136,11 @@ class SectionsController extends Controller
     {
         $this->authorizeSection($section);
 
-        $action->handle($section);
+        try {
+            $action->handle($section);
+        } catch (RuntimeException $exception) {
+            return back()->withErrors(['section' => $exception->getMessage()]);
+        }
 
         return back()->with('success', 'حُذف القسم.');
     }

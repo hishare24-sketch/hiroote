@@ -12,6 +12,7 @@ use App\Domains\Knowledge\Http\KnowledgeController;
 use App\Domains\Projects\Http\ProjectsController;
 use App\Domains\Projects\Http\SwitchProjectController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\HelpController;
 use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\PlannedScreenController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,9 @@ Route::middleware('guest')->group(function (): void {
 
 Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
+    // شرح الشاشة الحالية — بلا صلاحية خاصة: من يرى شاشةً يحقّ له فهمها.
+    Route::get('/help/topic', HelpController::class)->name('help.topic');
 
     // التبديل بلا صلاحية خاصة: العضوية نفسها هي الإذن (ADR-0003 §4).
     Route::post('/projects/{project}/switch', SwitchProjectController::class)
