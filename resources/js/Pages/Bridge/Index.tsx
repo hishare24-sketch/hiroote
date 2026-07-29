@@ -168,6 +168,12 @@ interface Props {
     fetchedAt: string;
 }
 
+/** ما يوقّع به هاي روت كل دفعة تنبيه — كما يقرأه المستقبِل حرفًا بحرف. */
+const SIGNATURE_HEADERS: [string, string][] = [
+    ['الطابع', 'X-Hiroote-Timestamp: 1753822800'],
+    ['التوقيع', 'X-Hiroote-Signature: sha256=HMAC-SHA256(secret, "{timestamp}.{body}")'],
+];
+
 const ENDPOINT_LABELS: Record<string, string> = {
     settings: 'إعداد المساعد',
     analytics: 'تحليل الاستهلاك',
@@ -776,12 +782,36 @@ function WebhookCard({ webhook }: { webhook: WebhookRow | null }) {
                         </Button>
                     </div>
 
-                    <p className="text-micro text-fg-subtle">
-                        الترويسة <span dir="ltr">X-Hiroote-Signature</span> تحمل{' '}
-                        <span dir="ltr">sha256=HMAC(secret, timestamp + &quot;.&quot; + body)</span>{' '}
-                        والطابع في <span dir="ltr">X-Hiroote-Timestamp</span> — احسبه على الجسم
-                        الخام قبل تحليله، ورُدّ ٢xx وإلا عُدَّت المحاولة إخفاقًا.
-                    </p>
+                    {/*
+                     * كل ترويسة في سطرها بجهتها.
+                     *
+                     * سطرٌ واحد يخلط عربيةً بأسماء ترويسات ودالّة توقيع يعيد
+                     * الثنائي الاتجاه ترتيبَه على الشاشة، فيُقرأ اسمُ ترويسةٍ
+                     * ملتصقًا بقيمة أخرى — ومن ينسخه يوقّع على غير ما نوقّع.
+                     */}
+                    <div className="rounded-control bg-surface-sunken p-3">
+                        <p className="text-caption text-fg-muted">ما يصل المشروع مع كل دفعة:</p>
+
+                        <dl className="mt-2 flex flex-col gap-2">
+                            {SIGNATURE_HEADERS.map(([label, value]) => (
+                                <div key={label}>
+                                    <dt className="text-micro text-fg-subtle">{label}</dt>
+                                    <dd
+                                        dir="ltr"
+                                        className="overflow-x-auto font-mono text-micro text-fg-default"
+                                    >
+                                        {value}
+                                    </dd>
+                                </div>
+                            ))}
+                        </dl>
+
+                        <p className="mt-3 text-micro text-fg-subtle">
+                            احسب التوقيع على <strong className="text-fg-muted">الجسم الخام</strong>{' '}
+                            قبل تحليله، وارفض ما تجاوز طابعه دقائق معدودة. وردٌّ غير ٢xx يُسجَّل
+                            إخفاقًا في هذه البطاقة.
+                        </p>
+                    </div>
                 </form>
             </CardBody>
         </Card>
