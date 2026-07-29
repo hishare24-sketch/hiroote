@@ -77,13 +77,32 @@ export interface SourceRow {
     created_at: string;
 }
 
+export interface VerificationRow {
+    id: number;
+    outcome: EnumRef<string>;
+    steps: string;
+    finding: string | null;
+    screen: string | null;
+    verifier: string | null;
+    created_at: string;
+}
+
 export interface FeedbackRow {
     id: number;
     kind: EnumRef<FeedbackKind>;
+    source: EnumRef<string>;
+    /** هل يلزم تحقق ميداني قبل البناء على هذا الرصد. */
+    needs_verification: boolean;
+    /** هل ثبت الرصد فعلًا — بتحقق ميداني أو بكونه شهادة موظف دعم. */
+    actionable: boolean;
+    screen: { id: number; name: string } | null;
+    assignee: string | null;
     body: string;
     occurrences: number;
     resolved: boolean;
+    resolution: string | null;
     created_at: string;
+    verifications: VerificationRow[];
 }
 
 export interface VersionRow {

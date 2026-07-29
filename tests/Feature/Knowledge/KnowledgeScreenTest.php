@@ -134,8 +134,16 @@ class KnowledgeScreenTest extends TestCase
             ->get('/knowledge')
             ->assertInertia(fn ($page) => $page->where('sections.0.completion', 75));
 
+        // الدورة كاملة: لا يُغلق الرصد بوصفه معالَجًا قبل تحقق ميداني يثبته.
         $this->actingAs($this->manager)
-            ->post("/knowledge/feedback/{$note->id}", ['resolved' => true])
+            ->post("/knowledge/feedback/{$note->id}/verify", [
+                'outcome' => 'reproduced',
+                'steps' => 'دخلت بحساب تجريبي وسألت عن رسوم التحويل الدولي فلم أجدها.',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($this->manager)
+            ->post("/knowledge/feedback/{$note->id}/close", ['resolution' => 'fixed'])
             ->assertRedirect();
 
         $this->actingAs($this->manager)

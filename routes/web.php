@@ -102,8 +102,12 @@ Route::middleware('auth')->group(function (): void {
             ->name('knowledge.items.update');
         Route::post('/knowledge/items/{item}/versions/{version}/restore', [KnowledgeController::class, 'restore'])
             ->name('knowledge.versions.restore');
-        Route::post('/knowledge/feedback/{feedback}', [KnowledgeController::class, 'resolveFeedback'])
-            ->name('knowledge.feedback.resolve');
+        Route::post('/knowledge/feedback/{feedback}/verify', [KnowledgeController::class, 'verifyFeedback'])
+            ->name('knowledge.feedback.verify');
+        Route::post('/knowledge/feedback/{feedback}/close', [KnowledgeController::class, 'closeFeedback'])
+            ->name('knowledge.feedback.close');
+        Route::post('/knowledge/feedback/{feedback}/assign', [KnowledgeController::class, 'assignFeedback'])
+            ->name('knowledge.feedback.assign');
 
         Route::post('/knowledge/sections/{section}/screens', [KnowledgeController::class, 'storeScreen'])
             ->name('knowledge.screens.store');

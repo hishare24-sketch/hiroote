@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace App\Domains\Knowledge\Http;
 
 use App\Domains\Assistants\Models\ProjectSection;
-use App\Domains\Knowledge\Actions\ResolveKnowledgeFeedback;
+use App\Domains\Knowledge\Actions\AssignKnowledgeFeedback;
+use App\Domains\Knowledge\Actions\CloseKnowledgeFeedback;
+use App\Domains\Knowledge\Actions\RecordFeedbackVerification;
 use App\Domains\Knowledge\Actions\RestoreKnowledgeVersion;
 use App\Domains\Knowledge\Actions\SaveKnowledgeItem;
 use App\Domains\Knowledge\Actions\SaveKnowledgeScreen;
 use App\Domains\Knowledge\Enums\FeedbackKind;
 use App\Domains\Knowledge\Enums\KnowledgeKind;
 use App\Domains\Knowledge\Enums\KnowledgeStatus;
+use App\Domains\Knowledge\Enums\VerificationOutcome;
+use App\Domains\Knowledge\Models\FeedbackVerification;
 use App\Domains\Knowledge\Models\KnowledgeFeedback;
 use App\Domains\Knowledge\Models\KnowledgeItem;
 use App\Domains\Knowledge\Models\KnowledgeScreen;
@@ -30,6 +34,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 /**
  * قاعدة المعرفة وتفاصيل القسم — وثيقة 06 §15.
@@ -140,16 +145,38 @@ class KnowledgeController extends Controller
             'feedback' => KnowledgeFeedback::query()
                 ->forProject($project)
                 ->where('section_id', $section->id)
+                ->with(['screen:id,name', 'assignee:id,name', 'verifications.verifier:id,name', 'verifications.screen:id,name'])
                 ->orderBy('resolved_at')
                 ->orderByDesc('occurrences')
                 ->get()
                 ->map(fn (KnowledgeFeedback $entry): array => [
                     'id' => $entry->id,
                     'kind' => EnumPayload::from($entry->kind),
+                    'source' => EnumPayload::from($entry->source),
+                    'needs_verification' => $entry->source->needsVerification(),
+                    'actionable' => $entry->isActionable(),
+                    'screen' => $entry->screen === null ? null : [
+                        'id' => $entry->screen->id,
+                        'name' => $entry->screen->name,
+                    ],
+                    'assignee' => $entry->assignee?->name,
                     'body' => $entry->body,
                     'occurrences' => $entry->occurrences,
                     'resolved' => $entry->resolved_at !== null,
+                    'resolution' => $entry->resolution,
                     'created_at' => $entry->created_at->toIso8601String(),
+                    'verifications' => $entry->verifications
+                        ->map(fn (FeedbackVerification $check): array => [
+                            'id' => $check->id,
+                            'outcome' => EnumPayload::from($check->outcome),
+                            'steps' => $check->steps,
+                            'finding' => $check->finding,
+                            'screen' => $check->screen?->name,
+                            'verifier' => $check->verifier?->name,
+                            'created_at' => $check->created_at->toIso8601String(),
+                        ])
+                        ->values()
+                        ->all(),
                 ])
                 ->values()
                 ->all(),
@@ -174,6 +201,14 @@ class KnowledgeController extends Controller
                     'label' => $kind->label(),
                 ],
                 FeedbackKind::cases(),
+            ),
+            'verificationOutcomes' => array_map(
+                fn (VerificationOutcome $outcome): array => [
+                    'value' => $outcome->value,
+                    'label' => $outcome->label(),
+                    'description' => $outcome->hint(),
+                ],
+                VerificationOutcome::cases(),
             ),
         ]);
     }
@@ -257,11 +292,77 @@ class KnowledgeController extends Controller
         return back()->with('success', "رجع العنصر إلى الإصدار {$version->version}.");
     }
 
-    public function resolveFeedback(Request $request, KnowledgeFeedback $feedback, ResolveKnowledgeFeedback $action): RedirectResponse
+    /** تسجيل محضر تحقق ميداني — الخطوة التي تسبق أي تعديل. */
+    public function verifyFeedback(
+        Request $request,
+        KnowledgeFeedback $feedback,
+        RecordFeedbackVerification $action,
+    ): RedirectResponse {
+        $project = $this->current->require();
+        abort_unless($feedback->project_id === $project->id, 404);
+
+        $validated = $request->validate([
+            'outcome' => ['required', 'string', 'in:reproduced,not_reproduced,different_cause'],
+            'steps' => ['required', 'string', 'min:10', 'max:2000'],
+            'finding' => ['nullable', 'string', 'max:2000'],
+            'screen_id' => ['nullable', 'integer'],
+        ], [
+            'steps.required' => 'اذكر ما فعلته بوصفك مستخدمًا — «تحقّقتُ» وحدها ليست إثباتًا.',
+            'steps.min' => 'الخطوات مختصرة أكثر مما يفيد من يقرؤها لاحقًا.',
+        ]);
+
+        $screenId = $validated['screen_id'] ?? null;
+
+        if ($screenId !== null) {
+            abort_unless(
+                KnowledgeScreen::query()->forProject($project)->whereKey($screenId)->exists(),
+                404,
+            );
+        }
+
+        $action->handle(
+            feedback: $feedback,
+            outcome: VerificationOutcome::from($validated['outcome']),
+            steps: $validated['steps'],
+            finding: $validated['finding'] ?? null,
+            screenId: $screenId,
+        );
+
+        return back()->with('success', 'سُجّل التحقق الميداني.');
+    }
+
+    public function closeFeedback(
+        Request $request,
+        KnowledgeFeedback $feedback,
+        CloseKnowledgeFeedback $action,
+    ): RedirectResponse {
+        abort_unless($feedback->project_id === $this->current->require()->id, 404);
+
+        $validated = $request->validate([
+            'resolution' => ['required', 'string', 'in:fixed,dismissed,reopen'],
+            'note' => ['nullable', 'string', 'max:300'],
+        ]);
+
+        if ($validated['resolution'] === 'reopen') {
+            $action->reopen($feedback);
+
+            return back();
+        }
+
+        try {
+            $action->handle($feedback, $validated['resolution'], $validated['note'] ?? null);
+        } catch (RuntimeException $exception) {
+            return back()->withErrors(['resolution' => $exception->getMessage()]);
+        }
+
+        return back()->with('success', 'أُغلق الرصد.');
+    }
+
+    public function assignFeedback(KnowledgeFeedback $feedback, AssignKnowledgeFeedback $action): RedirectResponse
     {
         abort_unless($feedback->project_id === $this->current->require()->id, 404);
 
-        $action->handle($feedback, $request->boolean('resolved'));
+        $action->handle($feedback);
 
         return back();
     }

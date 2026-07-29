@@ -8,6 +8,7 @@ use App\Domains\Administration\Models\User;
 use App\Domains\Assistants\Models\ProjectSection;
 use App\Domains\Conversations\Models\Conversation;
 use App\Domains\Knowledge\Enums\FeedbackKind;
+use App\Domains\Knowledge\Enums\FeedbackSource;
 use App\Domains\Knowledge\Enums\KnowledgeKind;
 use App\Domains\Knowledge\Enums\KnowledgeStatus;
 use App\Domains\Knowledge\Enums\SourceKind;
@@ -247,11 +248,11 @@ class KnowledgeSeeder extends Seeder
         $conversation = Conversation::query()->forProject($project)->first();
 
         foreach ([
-            ['section' => 'المحفظة', 'kind' => FeedbackKind::Unanswered, 'body' => 'كم رسوم التحويل للبنوك خارج السعودية؟', 'occurrences' => 7],
-            ['section' => 'المحفظة', 'kind' => FeedbackKind::Suggestion, 'body' => 'أضف مثالًا رقميًا لحساب الرسوم — يُسأل عنه كثيرًا.', 'occurrences' => 1],
-            ['section' => 'الحملات', 'kind' => FeedbackKind::Feedback, 'body' => 'الإجابة عن شروط الانضمام واضحة ومفيدة.', 'occurrences' => 3, 'resolved' => true],
-            ['section' => 'المشاركات', 'kind' => FeedbackKind::Unanswered, 'body' => 'ماذا لو حُذف المنشور بعد اعتماد المشاركة؟', 'occurrences' => 4],
-            ['section' => 'القسائم', 'kind' => FeedbackKind::Suggestion, 'body' => 'وضّح ما يحدث عند استخدام قسيمة منتهية.', 'occurrences' => 2],
+            ['section' => 'المحفظة', 'screen' => 'wallet.withdraw', 'source' => FeedbackSource::Assistant, 'kind' => FeedbackKind::Unanswered, 'body' => 'كم رسوم التحويل للبنوك خارج السعودية؟', 'occurrences' => 7],
+            ['section' => 'المحفظة', 'screen' => 'wallet.withdraw', 'source' => FeedbackSource::Support, 'kind' => FeedbackKind::Suggestion, 'body' => 'أضف مثالًا رقميًا لحساب الرسوم — يُسأل عنه كثيرًا.', 'occurrences' => 1],
+            ['section' => 'الحملات', 'source' => FeedbackSource::User, 'kind' => FeedbackKind::Feedback, 'body' => 'الإجابة عن شروط الانضمام واضحة ومفيدة.', 'occurrences' => 3, 'resolved' => true],
+            ['section' => 'المشاركات', 'source' => FeedbackSource::Assistant, 'kind' => FeedbackKind::Unanswered, 'body' => 'ماذا لو حُذف المنشور بعد اعتماد المشاركة؟', 'occurrences' => 4],
+            ['section' => 'القسائم', 'source' => FeedbackSource::User, 'kind' => FeedbackKind::Suggestion, 'body' => 'وضّح ما يحدث عند استخدام قسيمة منتهية.', 'occurrences' => 2],
         ] as $entry) {
             $section = $sections->get($entry['section']);
 
@@ -259,13 +260,19 @@ class KnowledgeSeeder extends Seeder
                 continue;
             }
 
+            $screenKey = $entry['screen'] ?? null;
+
             KnowledgeFeedback::query()->updateOrCreate(
                 ['project_id' => $project->id, 'section_id' => $section->id, 'body' => $entry['body']],
                 [
                     'kind' => $entry['kind'],
+                    'source' => $entry['source'],
+                    'screen_id' => $screenKey === null ? null : KnowledgeScreen::query()
+                        ->forProject($project)->where('key', $screenKey)->value('id'),
                     'occurrences' => $entry['occurrences'],
                     'conversation_id' => $conversation?->id,
                     'resolved_at' => ($entry['resolved'] ?? false) ? now()->subDay() : null,
+                    'resolution' => ($entry['resolved'] ?? false) ? 'fixed' : null,
                 ],
             );
         }

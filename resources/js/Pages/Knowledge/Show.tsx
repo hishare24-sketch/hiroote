@@ -2,7 +2,6 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import {
     ArrowRight,
-    Check,
     FileText,
     History,
     Link2,
@@ -34,6 +33,7 @@ import { EmptyState } from '@/Components/ui/EmptyState';
 import { Input } from '@/Components/ui/Input';
 import { PageHeader } from '@/Components/ui/PageHeader';
 import { Select } from '@/Components/ui/Select';
+import { FeedbackCard } from './FeedbackCard';
 import { ScreenDialog } from './ScreenDialog';
 import { usePermissions } from '@/Hooks/usePermissions';
 import { formatNumber, formatPercent, formatRelative } from '@/lib/format';
@@ -49,6 +49,7 @@ interface Props {
     kindOptions: KindOption[];
     statusOptions: KindOption[];
     feedbackKinds: KindOption[];
+    verificationOutcomes: KindOption[];
 }
 
 const SOURCE_ICONS: Record<string, typeof Link2> = {
@@ -67,6 +68,7 @@ export default function KnowledgeShow({
     feedback,
     kindOptions,
     statusOptions,
+    verificationOutcomes,
 }: Props) {
     const { can } = usePermissions();
     const manage = can('knowledge.manage');
@@ -229,7 +231,7 @@ export default function KnowledgeShow({
                     <Card>
                         <CardHeader
                             title="الملاحظات والأسئلة"
-                            description="ما وصل من المستخدمين ومن المساعد نفسه"
+                            description="رصدٌ يُفرز ثم يُتحقق منه ميدانيًا قبل أي تعديل"
                         />
                         <CardBody>
                             {feedback.length === 0 ? (
@@ -240,65 +242,12 @@ export default function KnowledgeShow({
                             ) : (
                                 <ul className="flex flex-col divide-y divide-border-default">
                                     {feedback.map((entry) => (
-                                        <li
+                                        <FeedbackCard
                                             key={entry.id}
-                                            className={cn(
-                                                'flex items-start gap-3 py-3 first:pt-0',
-                                                entry.resolved && 'opacity-60',
-                                            )}
-                                        >
-                                            <div className="min-w-0 flex-1">
-                                                <p className="flex flex-wrap items-center gap-2">
-                                                    <Badge tone={entry.kind.tone}>
-                                                        {entry.kind.label}
-                                                    </Badge>
-                                                    {entry.occurrences > 1 ? (
-                                                        <span className="text-micro font-bold text-fg-muted tabular-nums">
-                                                            تكرر {formatNumber(entry.occurrences)}{' '}
-                                                            مرات
-                                                        </span>
-                                                    ) : null}
-                                                </p>
-                                                <p
-                                                    className={cn(
-                                                        'mt-1 text-caption text-fg-default',
-                                                        entry.resolved && 'line-through',
-                                                    )}
-                                                >
-                                                    {entry.body}
-                                                </p>
-                                            </div>
-
-                                            {manage ? (
-                                                <button
-                                                    type="button"
-                                                    aria-label={
-                                                        entry.resolved
-                                                            ? 'إعادة فتح الملاحظة'
-                                                            : 'إغلاق الملاحظة'
-                                                    }
-                                                    onClick={() => {
-                                                        router.post(
-                                                            `/knowledge/feedback/${String(entry.id)}`,
-                                                            { resolved: !entry.resolved },
-                                                            { preserveScroll: true },
-                                                        );
-                                                    }}
-                                                    className={cn(
-                                                        'shrink-0 rounded-control p-1.5',
-                                                        entry.resolved
-                                                            ? 'text-fg-subtle hover:bg-surface-sunken'
-                                                            : 'text-success hover:bg-success-soft',
-                                                    )}
-                                                >
-                                                    {entry.resolved ? (
-                                                        <X aria-hidden className="size-4" />
-                                                    ) : (
-                                                        <Check aria-hidden className="size-4" />
-                                                    )}
-                                                </button>
-                                            ) : null}
-                                        </li>
+                                            entry={entry}
+                                            outcomes={verificationOutcomes}
+                                            manage={manage}
+                                        />
                                     ))}
                                 </ul>
                             )}
