@@ -1,0 +1,13 @@
+# استثناءات فحص الأسرار — كل سطر هنا قرارٌ مُراجَع لا تعطيلٌ للفحص.
+#
+# القاعدة: لا يُضاف سطر إلا بعد فتح الملف والسطر والتأكد بالعين أن القيمة
+# وهمية. البصمة مثبّتة على الالتزام الذي أدخل القيمة، فلا تنزلق مع تعديل
+# الملف لاحقًا، وأيّ مفتاح جديد يسقط في CI حتى يُراجَع هو أيضًا.
+#
+# الثلاثة أدناه تجهيزات اختبارية بأرقام متسلسلة ظاهرة الاصطناع
+# (sk-live-123456789 · sk-test-1234567890abcd · sk-nope-12345678)، رفعها
+# gitleaks على الإنتروبيا وحدها لا على مطابقة مزوّد.
+
+f45f408e0f8c72ad006878feed9ed56491789a44:tests/Feature/Providers/ProviderHealthCheckTest.php:generic-api-key:28
+f45f408e0f8c72ad006878feed9ed56491789a44:tests/Feature/Providers/ProviderCredentialTest.php:generic-api-key:30
+f45f408e0f8c72ad006878feed9ed56491789a44:tests/Feature/Providers/ProviderCredentialTest.php:generic-api-key:116
