@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Integrations\Services;
 
+use App\Domains\Alerts\Models\ProjectWebhook;
 use App\Domains\Integrations\Models\ProjectApiKey;
 use App\Domains\Integrations\Models\ProjectBridge;
 use App\Domains\Projects\Models\Project;
@@ -33,6 +34,7 @@ class ConnectionMethods
     {
         $keys = ProjectApiKey::query()->forProject($project)->usable()->count();
         $bridge = ProjectBridge::query()->forProject($project)->first();
+        $webhook = ProjectWebhook::query()->forProject($project)->first();
 
         return [
             [
@@ -101,6 +103,26 @@ class ConnectionMethods
                 ],
                 'endpoints' => ['نفس نقاط حساب الخدمة، بلا تسجيل دخول'],
                 'where' => 'جسر المشروع ← إعداد الاتصال',
+                'route' => '/bridge',
+            ],
+            [
+                'key' => 'outbound_alert_webhook',
+                'icon' => 'bell-ring',
+                'title' => 'دفع التنبيهات — صادر لحظي',
+                'direction' => 'هاي روت ← المشروع',
+                'summary' => 'هاي روت يدفع التنبيه لحظة فتحه إلى وجهة في المشروع، موقَّعًا بسرٍّ مشترك.',
+                'status' => match (true) {
+                    $webhook === null => self::AVAILABLE,
+                    $webhook->isUsable() => self::READY,
+                    default => self::AVAILABLE,
+                },
+                'status_note' => $webhook?->statusLabel() ?? 'لا وجهة مضبوطة',
+                'needs' => [
+                    'مسار POST في المشروع يستقبل التنبيه',
+                    'سرّ توقيع مشترك، والتحقق من HMAC على الجسم الخام',
+                ],
+                'endpoints' => ['POST {وجهة المشروع} — بترويستَي التوقيع والطابع'],
+                'where' => 'جسر المشروع ← وجهة دفع التنبيهات',
                 'route' => '/bridge',
             ],
             [

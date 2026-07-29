@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import {
     ArrowLeftRight,
+    BellRing,
     KeyRound,
     Shield,
     Ticket,
@@ -28,6 +29,7 @@ export interface ConnectionMethod {
 
 const ICONS: Record<string, LucideIcon> = {
     key: KeyRound,
+    'bell-ring': BellRing,
     'user-cog': UserCog,
     ticket: Ticket,
     webhook: Webhook,
