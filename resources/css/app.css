@@ -1,5 +1,17 @@
 @import 'tailwindcss';
 
+/* الخط العربي — IBM Plex Sans Arabic مستضاف محليًا (لا CDN، يعمل دون إنترنت).
+ * صُمم لواجهات الاستخدام ويقترن بـ IBM Plex Sans اللاتيني، فتظهر الأسماء
+ * المختلطة مثل «OpenAI — GPT-5.1» بنفس النَّفَس البصري. */
+@import '@fontsource/ibm-plex-sans-arabic/arabic-400.css';
+@import '@fontsource/ibm-plex-sans-arabic/arabic-500.css';
+@import '@fontsource/ibm-plex-sans-arabic/arabic-600.css';
+@import '@fontsource/ibm-plex-sans-arabic/arabic-700.css';
+@import '@fontsource/ibm-plex-sans-arabic/latin-400.css';
+@import '@fontsource/ibm-plex-sans-arabic/latin-500.css';
+@import '@fontsource/ibm-plex-sans-arabic/latin-600.css';
+@import '@fontsource/ibm-plex-sans-arabic/latin-700.css';
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
@@ -14,8 +26,8 @@
  * ------------------------------------------------------------------------ */
 @theme {
     --font-sans:
-        'Noto Sans Arabic', 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji';
+        'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Noto Color Emoji';
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
     /* شبكة 8px */
@@ -111,6 +123,13 @@
 
     * {
         border-color: var(--color-border-default);
+    }
+
+    html {
+        /* أرقام متساوية العرض: الجداول والعدّادات لا تقفز عند تغير القيمة. */
+        font-variant-numeric: tabular-nums;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
     }
 
     /* وثيقة 03 §6 — Focus واضح ومرئي في الوضعين. */

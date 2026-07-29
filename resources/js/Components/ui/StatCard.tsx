@@ -46,27 +46,27 @@ export function StatCard({
     return (
         <div
             className={cn(
-                'flex flex-col gap-4 rounded-card border border-border-default bg-surface-raised p-5',
+                'flex flex-col gap-4 rounded-card border border-border-default bg-surface-raised p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)]',
                 className,
             )}
         >
-            <div className="flex items-start justify-between gap-3">
-                <p className="text-sm text-fg-muted">{label}</p>
+            <div className="flex items-center gap-3">
                 <span
                     aria-hidden
                     className={cn(
-                        'flex size-11 shrink-0 items-center justify-center rounded-[14px]',
+                        'flex size-10 shrink-0 items-center justify-center rounded-control',
                         ICON_TONES[tone],
                     )}
                 >
                     <Icon className="size-5" />
                 </span>
+                <p className="min-w-0 flex-1 truncate text-sm font-medium text-fg-muted">{label}</p>
             </div>
 
             <div>
-                <p className="text-2xl font-bold text-fg-default">{value}</p>
+                <p className="text-[28px] leading-none font-bold text-fg-default">{value}</p>
                 {caption !== undefined ? (
-                    <p className="mt-1 text-xs text-fg-muted">{caption}</p>
+                    <p className="mt-2 text-xs text-fg-muted">{caption}</p>
                 ) : null}
             </div>
 

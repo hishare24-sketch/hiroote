@@ -202,7 +202,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     Hiroote AI
                 </button>
 
-                <main className="flex-1 space-y-6 p-4 sm:p-6">
+                <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-5 p-4 sm:p-6">
                     {flash.success !== null ? <Alert tone="success" title={flash.success} /> : null}
                     {flash.error !== null ? <Alert tone="danger" title={flash.error} /> : null}
 
