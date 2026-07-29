@@ -45,7 +45,7 @@ enum AssistantFunction: string implements PresentableEnum
             self::HumanHandoff => 'التحويل البشري',
             self::EscalationEmail => 'إرسال بريد التصعيد',
             self::ShowRelatedScreens => 'عرض روابط وشاشات مرتبطة بالإجابة',
-            self::ChatZoom => 'تكبير واجهة شات المساعد',
+            self::ChatZoom => 'نافذة الشات الكاملة',
         };
     }
 
@@ -65,7 +65,7 @@ enum AssistantFunction: string implements PresentableEnum
             self::HumanHandoff => 'تسليم المحادثة إلى موظف بشري.',
             self::EscalationEmail => 'إشعار المسؤولين بالبريد عند التصعيد الحرج.',
             self::ShowRelatedScreens => 'إرفاق روابط شاشات التطبيق بالإجابة.',
-            self::ChatZoom => 'توسيع نافذة الشات داخل تطبيق Hi-Share.',
+            self::ChatZoom => 'شات المساعد والأعضاء والمجموعات بنمط موازين: فقاعة عائمة بعدّاد غير مقروء، وغرفة قابلة للسحب والتحجيم وملء الشاشة.',
         };
     }
 
@@ -94,19 +94,23 @@ enum AssistantFunction: string implements PresentableEnum
     }
 
     /**
-     * معنى «زوم شات المساعد» لم يُثبَّت بعد (وثيقة 06 §21).
+     * وظيفة تعريفها مُعتمد وتنفيذها لم يصل بعد.
      *
-     * تظهر الوظيفة معلّمة ومعطّلة بدل تخمين معنًى قد يكون خاطئًا: سويتش يعمل
-     * على تعريف مجهول أسوأ من سويتش موقوف بسبب معلن.
+     * كان معنى «زوم شات المساعد» مفتوحًا في وثيقة 06 §21، ثم ثبّته المالك:
+     * نمط موازين نفسه — شات المساعد وشات الأعضاء وشات المجموعات، بفقاعة
+     * عائمة تحمل عدّاد غير المقروء وغرفة قابلة للتحجيم.
+     *
+     * يبقى السويتش موقوفًا حتى تُبنى الميزة: سويتش مفعّل على ما لا وجود له
+     * يَعِد المشغّل بسلوك لن يراه.
      */
-    public function awaitsDecision(): bool
+    public function awaitsImplementation(): bool
     {
         return $this === self::ChatZoom;
     }
 
     public function defaultEnabled(): bool
     {
-        return ! $this->isSensitive() && ! $this->awaitsDecision();
+        return ! $this->isSensitive() && ! $this->awaitsImplementation();
     }
 
     public function tone(): string
