@@ -38,6 +38,14 @@ return [
         'evaluation_interval_minutes' => (int) env('ALERT_EVALUATION_INTERVAL_MINUTES', 15),
     ],
 
+    /*
+     * كم شهرًا يُحفظ النبض اليومي. ويكنسه `hiroote:prune-pulses` فعلًا — مدّةُ
+     * حفظٍ بلا كانسٍ وعدٌ لا سياسة.
+     */
+    'pulse' => [
+        'retention_months' => (int) env('PULSE_RETENTION_MONTHS', 24),
+    ],
+
     'health_check' => [
         'interval_minutes' => (int) env('AI_HEALTH_CHECK_INTERVAL_MINUTES', 60),
         'timeout_seconds' => (int) env('AI_HEALTH_CHECK_TIMEOUT', 15),

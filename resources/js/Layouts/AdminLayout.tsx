@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
     { label: 'نظرة عامة', href: '/', permission: 'overview.view' },
     { label: 'المشاريع', href: '/projects', permission: 'project.view' },
     { label: 'الأداء والمحادثات', href: '/conversations', permission: 'conversations.view' },
+    { label: 'نبض المشروع', href: '/pulse', permission: 'pulse.view' },
     { label: 'الاستهلاك والتكلفة', href: '/usage', permission: 'usage.view' },
     { label: 'المزودون والنماذج', href: '/providers', permission: 'providers.view' },
     { label: 'التحويل والتصعيد', href: '/escalations', permission: 'escalations.view' },

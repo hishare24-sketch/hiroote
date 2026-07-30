@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domains\Administration\Http\UsersController;
 use App\Domains\Alerts\Http\AlertsController;
+use App\Domains\Analytics\Http\PulseController;
 use App\Domains\Analytics\Http\UsageController;
 use App\Domains\Assistants\Http\AssistantsController;
 use App\Domains\Assistants\Http\SectionsController;
@@ -60,6 +61,10 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/conversations/{conversation}', [ConversationsController::class, 'show'])
             ->name('conversations.show');
     });
+
+    Route::get('/pulse', PulseController::class)
+        ->middleware('permission:pulse.view')
+        ->name('pulse.index');
 
     Route::get('/usage', UsageController::class)
         ->middleware('permission:usage.view')
