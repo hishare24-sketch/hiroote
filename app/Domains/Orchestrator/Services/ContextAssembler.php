@@ -9,6 +9,7 @@ use App\Domains\Assistants\Models\ProjectSection;
 use App\Domains\Knowledge\Enums\KnowledgeStatus;
 use App\Domains\Knowledge\Models\KnowledgeItem;
 use App\Domains\Knowledge\Models\KnowledgeScreen;
+use App\Domains\Knowledge\Services\KnowledgeSearch;
 use App\Domains\Orchestrator\DTOs\AssembledContext;
 use App\Domains\Orchestrator\DTOs\AssistantRequest;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,6 +27,8 @@ use Illuminate\Support\Collection;
 class ContextAssembler
 {
     private const MAX_ITEMS = 25;
+
+    public function __construct(private readonly KnowledgeSearch $search) {}
 
     public function system(AssistantRequest $request): string
     {
@@ -166,18 +169,11 @@ class ContextAssembler
      */
     private function select(Builder $published, string $question): Collection
     {
-        $terms = $this->terms($question);
+        $terms = $this->search->terms($question);
 
         $matched = $terms === []
             ? collect()
-            : (clone $published)
-                ->where(function ($query) use ($terms): void {
-                    foreach ($terms as $term) {
-                        $query->orWhere('title', 'ilike', "%{$term}%")
-                            ->orWhere('summary', 'ilike', "%{$term}%")
-                            ->orWhere('body', 'ilike', "%{$term}%");
-                    }
-                })
+            : $this->search->apply(clone $published, $question)
                 ->orderByDesc('updated_at')
                 ->limit(self::MAX_ITEMS)
                 ->get();
@@ -195,21 +191,6 @@ class ContextAssembler
             ->get();
 
         return $matched->concat($filler);
-    }
-
-    /**
-     * كلمات السؤال الصالحة للبحث.
-     *
-     * الحروف القصيرة تطابق كل شيء فلا تميّز، والكثرة تحوّل الاختيار إلى
-     * «الكل» فتعود المشكلة. ثمانيةٌ بطول ثلاثة فأكثر حدٌّ عمليّ.
-     *
-     * @return list<string>
-     */
-    private function terms(string $question): array
-    {
-        preg_match_all('/[\p{Arabic}\p{Latin}\d]{3,}/u', $question, $matches);
-
-        return array_slice(array_values(array_unique($matches[0])), 0, 8);
     }
 
     private function levelBlock(AssistantRequest $request): string

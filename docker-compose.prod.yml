@@ -1,0 +1,105 @@
+# ═══ الإنتاج — هاي روت بجانب موازين على الخادم نفسه ═══
+#
+# يُشغَّل بمشروع مستقلّ: `docker compose -p hiroote -f docker-compose.prod.yml …`
+# فلا تختلط حاوياته ولا أحجامه ولا شبكته بمشروع موازين.
+#
+# ولا منفذ منشور إلى الخارج: البوّابة الوحيدة هي Caddy الخاصة بموازين، تصل
+# التطبيق عبر الشبكة المشتركة. منفذٌ منشورٌ هنا يعني بابًا ثانيًا بلا TLS ولا
+# ترويسات أمان، يعمل ولا يلاحظه أحد.
+name: hiroote
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: docker/production/Dockerfile
+        image: hiroote-app:latest
+        restart: unless-stopped
+        env_file: [.env]
+        depends_on:
+            pgsql: { condition: service_healthy }
+            redis: { condition: service_healthy }
+        volumes:
+            - storage:/var/www/html/storage/app
+        networks: [internal, gateway]
+        healthcheck:
+            test: ['CMD', 'php', 'artisan', 'about', '--only=environment']
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+
+    # عامل الطوابير — بدونه لا يُرسَل تنبيهٌ ولا يُنفَّذ ما أُجِّل، وتبقى
+    # الوظائف في الصف بلا خطأ يُنبّه أحدًا.
+    queue:
+        image: hiroote-app:latest
+        restart: unless-stopped
+        env_file: [.env]
+        # `--max-time` يجعل العامل يخرج كل ساعة فيعيده Docker: عمليةٌ طويلة
+        # العمر في PHP تحتفظ بالكود القديم في الذاكرة بعد النشر.
+        command: php artisan queue:work --tries=3 --backoff=30 --max-time=3600 --sleep=3
+        depends_on:
+            app: { condition: service_started }
+            redis: { condition: service_healthy }
+        volumes:
+            - storage:/var/www/html/storage/app
+        networks: [internal]
+
+    # المجدول — تقييم التنبيهات كل ١٥ دقيقة وفحص المزودين كل ساعة.
+    scheduler:
+        image: hiroote-app:latest
+        restart: unless-stopped
+        env_file: [.env]
+        command: php artisan schedule:work
+        depends_on:
+            app: { condition: service_started }
+        volumes:
+            - storage:/var/www/html/storage/app
+        networks: [internal]
+
+    pgsql:
+        image: postgres:16-alpine
+        restart: unless-stopped
+        environment:
+            POSTGRES_DB: '${DB_DATABASE}'
+            POSTGRES_USER: '${DB_USERNAME}'
+            POSTGRES_PASSWORD: '${DB_PASSWORD}'
+        volumes:
+            - pgsql-data:/var/lib/postgresql/data
+        networks: [internal]
+        healthcheck:
+            test: ['CMD', 'pg_isready', '-q', '-d', '${DB_DATABASE}', '-U', '${DB_USERNAME}']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    redis:
+        image: redis:7-alpine
+        restart: unless-stopped
+        # الكاش والطوابير معًا في Redis: بقاءُ الطوابير عبر إعادة التشغيل يمنع
+        # ضياع تنبيهٍ في الصف عند نشرٍ عابر.
+        command: redis-server --appendonly yes
+        volumes:
+            - redis-data:/data
+        networks: [internal]
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+networks:
+    # شبكة هاي روت وحده — القاعدة و Redis لا يراهما شيء خارجها.
+    internal:
+        driver: bridge
+
+    # شبكة موازين القائمة — منها تصل Caddy حاويةَ التطبيق وحدها.
+    # اسمها مشروعُ موازين + `_app`. يُغيَّر بـ GATEWAY_NETWORK إن اختلف.
+    gateway:
+        external: true
+        name: ${GATEWAY_NETWORK:-mazeen-staging_app}
+
+volumes:
+    pgsql-data:
+    redis-data:
+    storage:
