@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Console\Commands\BackupDatabase;
 use App\Domains\Alerts\Jobs\EvaluateProjectAlerts;
 use App\Domains\Providers\Jobs\RunProviderHealthChecks;
 use Illuminate\Support\Facades\Schedule;
@@ -20,4 +21,15 @@ $alerts = config()->integer('hiroote.alerts.evaluation_interval_minutes', 15);
 
 Schedule::job(new EvaluateProjectAlerts)
     ->cron($alerts >= 60 ? '0 * * * *' : "*/{$alerts} * * * *")
+    ->withoutOverlapping();
+
+/*
+ * نسخة يومية من قاعدة البيانات — ٣:٣٠ فجرًا، أهدأ ساعة.
+ *
+ * تحمي من خطأٍ في التطبيق (هجرةٌ أتلفت، حذفٌ بالخطأ)، **لا من ضياع الخادم**
+ * فهي عليه. و`withoutOverlapping` لأن نسخةً تبدأ قبل أن تنتهي سابقتها تتنازعان
+ * على الملف نفسه.
+ */
+Schedule::command(BackupDatabase::class)
+    ->dailyAt('03:30')
     ->withoutOverlapping();

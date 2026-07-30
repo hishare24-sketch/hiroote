@@ -54,4 +54,11 @@ return [
     */
 
     'currency' => env('HIROOTE_CURRENCY', 'SAR'),
+
+    /*
+     * كم يومًا تُحفظ النسخ المحلية. وهي حمايةٌ من خطأٍ في التطبيق لا من ضياع
+     * الخادم — فهي عليه. انقلها خارجه (docs/10 §8).
+     */
+    'backup_retention_days' => (int) env('BACKUP_RETENTION_DAYS', 7),
+
 ];

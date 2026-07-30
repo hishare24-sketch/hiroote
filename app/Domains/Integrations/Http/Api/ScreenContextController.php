@@ -77,14 +77,24 @@ class ScreenContextController extends Controller
             'knowledge' => $section instanceof ProjectSection
                 ? $this->knowledge($project, $section)
                 : [],
-            // إذن الشات يُقرأ من هنا لا يُعاد تعريفه في المشروع: مصدرٌ واحد
-            // للإذن يعني أن إطفاء المالك يسري فورًا، وأن نسختين لا تتباعدان.
+            // إذن الشات يُنشر من هنا ليُقرأ لا ليُعاد تعريفه: نسختان للإذن
+            // تتباعدان. والتطبيق عند المشروع — القنوات تعمل فيه لا هنا.
             'chat' => $this->chat($project),
         ]);
     }
 
     /**
      * إذن الشات كما ضبطه المالك — لا رسائل ولا هويات.
+     *
+     * **`configured` تفصل «لا سياسة» عن «أُغلق كل شيء».** كان الفرعان يخرجان
+     * بالشكل نفسه (`enabled: false, kinds: [], scopes: []`)، فمشروعٌ يصل الحقل
+     * لأول مرة يُطفئ مساعده ودعمه ومحادثات أعضائه دفعةً واحدة — **بلا رسالة
+     * خطأ تدلّ على السبب**، لأن الحمولة صحيحةٌ نحويًّا وتقول قرارًا لم يُتَّخذ.
+     *
+     * وغياب البقية عند `configured: false` مقصود: حقلٌ موجود يُقرأ، وقيمةٌ
+     * غائبة تُجبر القارئ على أن يقرّر. وهو الفرق بين صمتٍ يُفسَّر وصمتٍ يُسأل عنه.
+     *
+     * (طلب موازين — hishare24-sketch/hiroote#8)
      *
      * @return array<string, mixed>
      */
@@ -93,10 +103,11 @@ class ScreenContextController extends Controller
         $policy = ProjectChatPolicy::query()->forProject($project)->first();
 
         if ($policy === null) {
-            return ['enabled' => false, 'kinds' => [], 'scopes' => []];
+            return ['configured' => false];
         }
 
         return [
+            'configured' => true,
             'enabled' => $policy->is_enabled,
             'kinds' => $policy->channel_kinds,
             'scopes' => $policy->scopes,
