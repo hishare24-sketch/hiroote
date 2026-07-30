@@ -61,9 +61,19 @@ if ! docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile; 
 fi
 
 say "موازين ما زال يعمل؟"
-# آخر ما يُفحص، وأهمّه: تعديل بوّابته وقع للتوّ.
-code="$(docker exec "$CADDY_CONTAINER" wget -qO /dev/null -S http://front:80/ 2>&1 | awk '/HTTP\//{print $2; exit}')"
-printf '  موازين (front) → %s\n' "${code:-لا رد}"
+
+# ⚠️ `|| true` مقصودة، وغيابها كان عيبًا حقيقيًّا: صورة Caddy لا تحمل `wget`،
+# فأخفق الفحص، ومع `set -e` **مات السكربت بعد أن أنجز عمله كله** — فقرأ المشغّل
+# توقّفًا صامتًا حيث كان النجاح. وفحصٌ تجميليّ لا يجوز أن يُسقط ما نجح.
+#
+# والفحص من المضيف بـ`curl` لا من داخل الحاوية: يمرّ بالبوّابة كما يمرّ الزائر،
+# فيقيس ما يهمّ فعلًا لا ما يُرى من الداخل.
+for site in "https://mawazinswift.com/" "https://${DOMAIN}/"; do
+    code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$site" 2>/dev/null || true)"
+    printf '  %-34s → %s\n' "$site" "${code:-لا رد}"
+done
+
+printf '\n  وشهادة %s تُطلب عند أول زيارة، فـ000 أو 502 في أول محاولة عاديّ.\n' "$DOMAIN"
 
 cat <<DONE
 
