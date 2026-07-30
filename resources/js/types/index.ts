@@ -20,6 +20,7 @@ export type Permission =
     | 'conversations.view'
     | 'conversations.view_content'
     | 'conversations.export'
+    | 'pulse.view'
     | 'usage.view'
     | 'usage.manage_budgets'
     | 'providers.view'

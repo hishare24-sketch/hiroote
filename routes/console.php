@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Console\Commands\BackupDatabase;
+use App\Console\Commands\PrunePulses;
 use App\Domains\Alerts\Jobs\EvaluateProjectAlerts;
 use App\Domains\Providers\Jobs\RunProviderHealthChecks;
 use Illuminate\Support\Facades\Schedule;
@@ -32,4 +33,14 @@ Schedule::job(new EvaluateProjectAlerts)
  */
 Schedule::command(BackupDatabase::class)
     ->dailyAt('03:30')
+    ->withoutOverlapping();
+
+/*
+ * كنس النبض المنتهية مدّته — ٤:١٠ فجرًا، بعد النسخة لا قبلها.
+ *
+ * الترتيب مقصود: نسخةُ اليوم تُؤخذ وفيها ما سيُحذف بعد أربعين دقيقة، فيبقى
+ * للمحذوف أثرٌ يومًا واحدًا على الأقل. والعكس يحذف ثم ينسخ فلا يبقى شيء.
+ */
+Schedule::command(PrunePulses::class)
+    ->dailyAt('04:10')
     ->withoutOverlapping();

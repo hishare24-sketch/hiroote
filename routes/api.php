@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domains\Integrations\Http\Api\ConversationIntakeController;
 use App\Domains\Integrations\Http\Api\FeedbackIntakeController;
+use App\Domains\Integrations\Http\Api\PulseIntakeController;
 use App\Domains\Integrations\Http\Api\ScreenContextController;
 use App\Http\Middleware\AuthenticateProjectApiKey;
 use Illuminate\Support\Facades\Route;
@@ -21,4 +22,5 @@ Route::prefix('api/v1')
         Route::get('/context', ScreenContextController::class)->name('api.context');
         Route::post('/conversations', ConversationIntakeController::class)->name('api.conversations');
         Route::post('/feedback', FeedbackIntakeController::class)->name('api.feedback');
+        Route::post('/pulse', PulseIntakeController::class)->name('api.pulse');
     });

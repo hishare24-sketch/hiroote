@@ -25,6 +25,9 @@ enum Permission: string
     case ConversationsViewContent = 'conversations.view_content';
     case ConversationsExport = 'conversations.export';
 
+    // نبض المشروع — القيم والمعدّلات اليومية الواردة من المشروع
+    case PulseView = 'pulse.view';
+
     // الاستهلاك والتكلفة
     case UsageView = 'usage.view';
     case UsageManageBudgets = 'usage.manage_budgets';
@@ -81,6 +84,7 @@ enum Permission: string
             self::ConversationsView => 'رؤية المحادثات ومؤشراتها',
             self::ConversationsViewContent => 'قراءة نصّ المحادثات',
             self::ConversationsExport => 'تصدير المحادثات',
+            self::PulseView => 'رؤية نبض المشروع',
             self::UsageView => 'رؤية الاستهلاك والتكلفة',
             self::UsageManageBudgets => 'ضبط الميزانيات',
             self::ProvidersView => 'رؤية المزودين والنماذج',
@@ -115,6 +119,7 @@ enum Permission: string
             'overview' => 'نظرة عامة',
             'project' => 'المشاريع',
             'conversations' => 'الأداء والمحادثات',
+            'pulse' => 'نبض المشروع',
             'usage' => 'الاستهلاك والتكلفة',
             'providers' => 'المزودون والنماذج',
             'assistants' => 'سلوك المساعد',
