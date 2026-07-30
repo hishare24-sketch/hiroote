@@ -19,10 +19,13 @@ export function FeedbackCard({
     entry,
     outcomes,
     manage,
+    project,
 }: {
     entry: FeedbackRow;
     outcomes: KindOption[];
     manage: boolean;
+    /** اسم المشروع الذي يُدخَل إليه للتحقق — لا اسمٌ مثبَّت في النص. */
+    project: string;
 }) {
     const [verifying, setVerifying] = useState(false);
 
@@ -190,8 +193,8 @@ export function FeedbackCard({
                     }}
                 >
                     <p className="text-caption text-fg-muted">
-                        ادخل هاي شير بوصفك مستخدمًا، جرّب ما وصفه الرصد على الشاشة نفسها، ثم سجّل ما
-                        فعلتَه وما وجدتَه.
+                        ادخل {project} بوصفك مستخدمًا، جرّب ما وصفه الرصد على الشاشة نفسها، ثم سجّل
+                        ما فعلتَه وما وجدتَه.
                     </p>
 
                     <Select

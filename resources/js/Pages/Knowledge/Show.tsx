@@ -41,6 +41,7 @@ import { cn } from '@/lib/cn';
 
 interface Props {
     systemStatus: { label: string; tone: StatusTone };
+    project: { id: number; name: string };
     section: SectionDetail;
     items: KnowledgeItemRow[];
     screens: ScreenRow[];
@@ -61,6 +62,7 @@ const SOURCE_ICONS: Record<string, typeof Link2> = {
 /** صفحة تفاصيل القسم — وثيقة 06 §15. */
 export default function KnowledgeShow({
     systemStatus,
+    project,
     section,
     items,
     screens,
@@ -247,6 +249,7 @@ export default function KnowledgeShow({
                                             entry={entry}
                                             outcomes={verificationOutcomes}
                                             manage={manage}
+                                            project={project.name}
                                         />
                                     ))}
                                 </ul>

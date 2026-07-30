@@ -137,6 +137,9 @@ class KnowledgeController extends Controller
 
         return Inertia::render('Knowledge/Show', [
             'systemStatus' => SystemStatus::current(),
+            // اسم المشروع لا يُثبَّت في نصوص الشاشة: تعليماتٌ تسمّي مشروعًا
+            // غير المفتوح تُرسل المحقِّق إلى لوحةٍ أخرى.
+            'project' => ['id' => $project->id, 'name' => $project->name],
             'section' => [
                 'id' => $section->id,
                 'name' => $section->name,

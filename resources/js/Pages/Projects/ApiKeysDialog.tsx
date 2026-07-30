@@ -100,7 +100,7 @@ export function ApiKeysDialog({
                         <Input
                             label="اسم المفتاح"
                             required
-                            placeholder="جسر هاي شير — الإنتاج"
+                            placeholder={`جسر ${project.name} — الإنتاج`}
                             value={form.data.name}
                             error={form.errors.name}
                             hint="يميّزه عند الإبطال؛ المفتاح نفسه لن يظهر بعد إصداره."
